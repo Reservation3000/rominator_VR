@@ -7,3 +7,10 @@
     left: 50%;
     transform: translate(-50%, -50%);
 }
+
+.slider{
+    position: fixed;
+    top: 6%;
+    left: 1%;
+    width: 20vw;
+}
