@@ -14,3 +14,9 @@
     left: 1%;
     width: 20vw;
 }
+
+.buttom{
+    position: fixed;
+    top:20vh;
+    left:3vw;
+}
