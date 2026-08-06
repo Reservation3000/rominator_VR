@@ -35,7 +35,7 @@ function importSongs() {
     try {
         meta = JSON.parse(fs.readFileSync(dataPath, "utf-8"));
     } catch (e) {
-        console.log(`JSON parsing failed: ${dataPath}`);
+        console.log(`JSON parsing failed: ${dataPath}`+ e.message);
         return;
     }
 

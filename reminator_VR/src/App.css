@@ -1,3 +1,4 @@
+/*遊玩畫布*/
 .canva{
     height: 80vh;
     width: 50vw;
@@ -8,6 +9,7 @@
     transform: translate(-50%, -50%);
 }
 
+/*測試-控制音符位置的滑條*/
 .slider{
     position: fixed;
     top: 6%;
@@ -15,8 +17,21 @@
     width: 20vw;
 }
 
-.buttom{
-    position: fixed;
-    top:20vh;
-    left:3vw;
+
+/*選歌表單中，每張圖片*/
+.mgImg{
+    width: 100%;
+    height: 300px;
+    object-fit: cover;
+}
+
+
+/*選歌表單中，每張card*/
+.mgCards{
+    transition: all 0.3s ease-in-out;
+}
+/*選歌表單中，每張card在滑鼠觸碰下*/
+.mgCards:hover {
+  transform: translateY(15px);
+  box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.3) !important;
 }

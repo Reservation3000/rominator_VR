@@ -14,26 +14,30 @@ const connection = mysql.createConnection({
   password : '0906468525',
   database : 'VRmgDB'
 });
-const server = new WebSocketServer({ port: 8080 });   //建立Websocket服務器，監聽8080端口
-const clients = new Map(); // 儲存客戶端連接的 Map
 
+// 設定只允許特定的前端來源存取
+// const corsOptions = {
+//     origin: 'http://localhost:5173', 
+//     optionsSuccessStatus: 200
+// };
 
+// app.get("/api/VRmgDB/data", cors(corsOptions) , (req, res) => {
 app.get("/api/VRmgDB/data", (req, res) => {
 
-    const sql = "SELECT id, name, song_artist, sheet_artist, level, bpm, mp3, csv, img FROM baseTable";
+    const sql = "SELECT id, name, song_artist, sheet_artist, level, bpm, mp3, csv, img FROM VRMgTable";
     
     connection.query(sql, (err, results) => {
         if (err) {
-            console.error("Server-Backend connected to SQL VRmgDB error:", err);
-            return res.status(500).json({ error: "Server-Backend connected to SQL VRmgDB error", details: err.message });
+            console.error("Server error:", err);
+            return res.status(500).json({ error: "Server error", details: err.message });
         }
 
         console.log(`Number of songs server get: ${results.length}`);
-        res.json(results); // return the results as JSON for Frontend
+        return res.json(results); // return the results as JSON for Frontend
     });
 });
 
- app.listen(3306, () => {
+ app.listen(8081, () => {
     console.log("server running");
   });
 
