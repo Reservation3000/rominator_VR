@@ -45,5 +45,65 @@
         "mp3": "https://mg.reservationfurry.art/jojo/base.mp3",
         "csv": "https://mg.reservationfurry.art/jojo/base.csv",
         "img": "https://mg.reservationfurry.art/jojo/base.jpg"
+    },
+
+    {
+        "id": 5,
+        "name": "only my railgun",
+        "song_artist": "FripSide",
+        "sheet_artist": "Reservation",
+        "level": 10,
+        "bpm": 143,
+        "mp3": "https://mg.reservationfurry.art/only my railgun/base.mp3",
+        "csv": "https://mg.reservationfurry.art/only my railgun/base.csv",
+        "img": "https://mg.reservationfurry.art/only my railgun/base.jpg"
+    },
+
+    {
+        "id": 6,
+        "name": "OIIAE",
+        "song_artist": "Ethel",
+        "sheet_artist": "Reservation",
+        "level": 8,
+        "bpm": 150,
+        "mp3": "https://mg.reservationfurry.art/OIIAE/base.mp3",
+        "csv": "https://mg.reservationfurry.art/OIIAE/base.csv",
+        "img": "https://mg.reservationfurry.art/OIIAE/base.jpg"
+    },
+
+    {
+        "id": 7,
+        "name": "健康操",
+        "song_artist": "教育部",
+        "sheet_artist": "Reservation",
+        "level": 4,
+        "bpm": 129,
+        "mp3": "https://mg.reservationfurry.art/健康操/base.mp3",
+        "csv": "https://mg.reservationfurry.art/健康操/base.csv",
+        "img": "https://mg.reservationfurry.art/健康操/base.jpg"
+    },
+
+    {
+        "id": 8,
+        "name": "譜裂的神話",
+        "song_artist": "sunoAI",
+        "sheet_artist": "Reservation",
+        "level": 11,
+        "bpm": 184,
+         "mp3": "https://mg.reservationfurry.art/譜裂的神話/base.mp3",
+        "csv": "https://mg.reservationfurry.art/譜裂的神話/base.csv",
+        "img": "https://mg.reservationfurry.art/譜裂的神話/base.jpg"
+    },
+
+     {
+        "id": 9,
+        "name": "熱血的決鬥者",
+        "song_artist": "Unknown",
+        "sheet_artist": "Reservation",
+        "level": 100,
+        "bpm": 100,
+         "mp3": "https://mg.reservationfurry.art/熱血的決鬥者/base.mp3",
+        "csv": "https://mg.reservationfurry.art/熱血的決鬥者/base.csv",
+        "img": "https://mg.reservationfurry.art/熱血的決鬥者/base.jpg"
     }
 ]
