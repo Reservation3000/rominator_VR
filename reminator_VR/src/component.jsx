@@ -1,6 +1,6 @@
 import { Slider } from 'antd';
 import { Card, Col, Row } from 'antd';
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect ,  useState } from 'react';
 import { Avatar } from 'antd';
 import {  Space , Button } from 'antd';
 
@@ -141,11 +141,29 @@ export const MenuMusicComponent = ({ getTouch , getChose}) => {
   );
 };
 
-export const ShowChoseSong = ({ getChose }) => {
+export const ShowChoseSong = ({ getChose , setStatus}) => {
+  const [getTime, setTime] = useState(3);  // 3秒
+
+  useEffect(() => {
+    let interval = null;   //interval=間隔
+    
+    if (getTime > 0) {
+      interval = setInterval(() => {
+        setTime((millisSeconds) => millisSeconds - 1);
+      }, 1000);
+    } else if (getTime === 0) {
+      setStatus(2);
+    }
+
+    // 清除計時器
+    return () => clearInterval(interval);
+  }, [getTime]);
+
   return (
     <div className="showChoseSong">
       <Avatar size={500} src={getChose.img} />
     </div>
   );
 };
+
 

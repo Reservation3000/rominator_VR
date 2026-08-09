@@ -27,7 +27,7 @@ import {
 
 function App() {
 
-  const [getStatus, setStatus] = useState(0);     // 0歌曲選單、1選了歌曲、2加載歌曲資料、3遊玩
+  const [getStatus, setStatus] = useState(0);     // 0歌曲選單、1選了歌曲、2遊玩
   const [getval, setVal] = useState(1); 
   const [getsongs, setSongs] = useState([]);      // 存放整包歌曲資料
   const [getTouch, setTouch] = useState(0);       // 有沒有摸到歌曲
@@ -55,21 +55,7 @@ function App() {
 
       {(getStatus === 0) && (
         <>
-          <div className="slider" >
-            <SliderComponent setVal={setVal}/>
-          </div>
-
-
-          <main className = "canva">
-            <Canvas >
-              <Stats />
-              <directionalLight position={[0, 0, 2]} />
-              <ambientLight intensity={1} />
-              <Box position={[0, 0, 3]} color="rgb(83, 83, 83)"/>
-              <Note position={[0, 0, 3.1]} color="rgb(255, 255, 255)" getval={getval} />
-            </Canvas>
-          </main>
-
+          
           <MenuMusicComponent getTouch={getTouch} getChose={getChose} />  {/* 選歌表單中，觸碰撥放音樂的邏輯 */}
           <MenuComponent  getsongs={getsongs} 
                           setTouch ={setTouch} 
@@ -85,7 +71,26 @@ function App() {
 
       {(getStatus === 1) && (
         <>
-          <ShowChoseSong getChose={getChose} songTotal={songTotal} getStatus={getStatus} />
+          <ShowChoseSong getChose={getChose} setStatus={setStatus} />
+        </>
+      )}
+
+      {(getStatus === 2) && (
+        <>
+        
+        <div className="slider" >
+          <SliderComponent setVal={setVal}/>
+        </div>
+
+         <main className = "canva">
+            <Canvas >
+              <Stats />
+              <directionalLight position={[0, 0, 2]} />
+              <ambientLight intensity={1} />
+              <Box position={[0, 0, 3]} color="rgb(83, 83, 83)"/>
+              <Note position={[0, 0, 3.1]} color="rgb(255, 255, 255)" getval={getval} />
+            </Canvas>
+          </main>
         </>
       )}
 
