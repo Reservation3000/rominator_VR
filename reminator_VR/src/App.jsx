@@ -12,7 +12,9 @@ import {
   MenuComponent,
   MenuMusicComponent,
   ShowChoseSong,
-  MenuPageSwitchBottom
+  MenuPageSwitchBottom,
+  ProcessChoseCSVData,
+  GameMusicComponent
 } from "./component.jsx";
 
 import { 
@@ -31,12 +33,17 @@ function App() {
   const [getval, setVal] = useState(1); 
   const [getsongs, setSongs] = useState([]);      // 存放整包歌曲資料
   const [getTouch, setTouch] = useState(0);       // 有沒有摸到歌曲
-  const [getChose, setChose] = useState(null);    // 有沒有選中歌曲
+  const [getChose, setChose] = useState(null);    // 有沒有選中歌曲，選中哪首歌(ID)
   const [getPage, setPage] = useState(0);         // 現在是第幾頁
+  const [getNoteData, setNoteData] = useState([]); //存入處理好的歌曲資料
+  const [getPuaseButtom, setPuaseButtom] = useState(false);  //遊玩的暫停鍵
   
+
   const songTotal = getsongs.length;       // 有幾首歌
   const pageLimit = 8;                     // 單頁只能出現 8 首歌
   const pageTotal = Math.ceil(songTotal / pageLimit); // 共有幾頁
+
+
 
 
   useEffect(() => {
@@ -49,7 +56,13 @@ function App() {
       .catch(err => console.log(err));
   },[])
 
+  //把getChose的樂曲資料，抓csv資料並做分類處裡，並丟進setNoteData 
+  ProcessChoseCSVData( {getChose , setNoteData} );
 
+
+  //===============================================================
+  // return =======================================================
+  //===============================================================
   return (
     <>
 
@@ -81,14 +94,16 @@ function App() {
         <div className="slider" >
           <SliderComponent setVal={setVal}/>
         </div>
-
+        
          <main className = "canva">
             <Canvas >
               <Stats />
               <directionalLight position={[0, 0, 2]} />
               <ambientLight intensity={1} />
               <Box position={[0, 0, 3]} color="rgb(83, 83, 83)"/>
-              <Note position={[0, 0, 3.1]} color="rgb(255, 255, 255)" getval={getval} />
+              <Note position={[0, 0, 3.1]} color="rgb(255, 255, 255)" 
+                    getval={getval}  
+              />
             </Canvas>
           </main>
         </>

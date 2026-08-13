@@ -3,6 +3,7 @@ import { Card, Col, Row } from 'antd';
 import { useRef, useEffect ,  useState } from 'react';
 import { Avatar } from 'antd';
 import {  Space , Button } from 'antd';
+import  Papa  from  'papaparse' ;
 
 
 export const Box = ({position , color }) => {
@@ -22,11 +23,33 @@ export const Box = ({position , color }) => {
 
 export const Note = ({position , color ,getval}) => {
   return (
-    <mesh position={position} >
-      <ringGeometry args={[getval-0.05, getval, 32, 1, 0, Math.PI * 2 * 0.32]} />
-      <meshStandardMaterial color={color} />
-    </mesh>
+    <>
+        <mesh position={position} >
+          <ringGeometry args={[getval-0.05, getval, 32, 1, 0, Math.PI * 2 * 0.32]} />
+          <meshStandardMaterial color={color} />
+        </mesh>
+    </>
   );
+}
+
+export const GameMusicComponent = ({ getChose , onTimeUpdate }) => {
+  
+  const musicChose = useRef(null);
+
+    return (
+      <>
+       {/* src 帶入音檔路徑  autoPlay 載入就自動播放  controls顯示播放控制條*/}
+        <audio src={getChose.mp3} 
+              ref={musicChose}
+              autoPlay 
+              onTimeUpdate={(e) => {
+              if (onTimeUpdate) {
+                onTimeUpdate(e.currentTarget.currentTime); // 傳回當前秒數
+              }
+            }}
+        />
+       </>
+    );
 }
 
 export const SliderComponent = ({setVal}) => {
@@ -88,6 +111,13 @@ export const MenuComponent = ({getsongs , setTouch , setChose , setStatus , getP
                 }}
           />
 
+          <Avatar className='certenCircle'
+                size={30}
+                title={ID.name} 
+                variant="borderless"
+                hoverable
+          />
+
         </div>
         )})}
     </div>
@@ -118,11 +148,11 @@ export const MenuPageSwitchBottom = ({ setPage , getPage , pageTotal }) => {
 }
 
 export const MenuMusicComponent = ({ getTouch , getChose}) => {
-    const music = useRef(null);
+    const musicTouched = useRef(null);
     useEffect(() => {
-        if (getChose && music.current) {
-        music.current.pause(); 
-        music.current.currentTime = 0; 
+        if (getChose && musicTouched.current) {
+        musicTouched.current.pause(); 
+        musicTouched.current.currentTime = 0; 
         }
     }, [getChose]);
 
@@ -130,7 +160,7 @@ export const MenuMusicComponent = ({ getTouch , getChose}) => {
     <>
       {/* src 帶入音檔路徑  autoPlay 載入就自動播放  controls顯示播放控制條*/}
       <audio src={getTouch.mp3} 
-             ref={music}
+             ref={musicTouched}
              autoPlay 
              onLoadedMetadata={(e) => {
                 // 當音訊資料載入完成後，將當前播放時間指向指定的秒數
@@ -166,4 +196,68 @@ export const ShowChoseSong = ({ getChose , setStatus}) => {
   );
 };
 
+/* 把getChose的樂曲資料，抓csv資料並做分類處裡，並丟進setNoteData */
+export const ProcessChoseCSVData = ({ getChose , setNoteData }) => {
+  useEffect(() =>{
+    const loadCsv = async () => {
+      if(!getChose)return[];
+
+      try {
+        const response = await fetch(getChose.csv);
+        const csvText = await response.text();
+
+        const result = Papa.parse(csvText, {
+          header: false,
+          dynamicTyping: true,
+          skipEmptyLines: true,
+        });
+
+        const rows = result.data; // 取得二維陣列資料
+        let data = [];      //存入
+
+        if (rows.length === 0) return data;
+
+        // csv是二維陣列資料[x][y] 
+        // 讀取第一行的整數數字 
+        const firstLineInt = rows[0][0];
+        console.log("First line integer:", firstLineInt);
+
+        // 從第二行開始讀取資料 (i = 1)
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          const type = row[0]; // 第一欄：類型
+
+          if (type === 'note') {
+            let triggerTime = (row[1] || 0) + firstLineInt;
+            let noteLand = row[2];
+            data.push({ type, triggerTime, noteLand });
+          } 
+          else if (type === 'drag') {
+            let triggerTimeStart = (row[1] || 0) + firstLineInt;
+            let triggerTimeEnd = (row[2] || 0) + firstLineInt;
+            let noteLandStart = row[3];
+            let noteLandEnd = row[4];
+            let direction = row[5];
+            data.push({ type, triggerTimeStart, triggerTimeEnd, noteLandStart, noteLandEnd, direction });
+          } 
+          else if (type === 'rotate') {
+            let triggerTime = (row[1] || 0) + firstLineInt;
+            let direction = row[2];
+            data.push({ type, triggerTime, direction });
+          }
+        }
+
+        setNoteData(data); // 把處理好的資料存進 State
+        
+      }catch(error) {
+
+        console.error("CSV load fails：", error);
+
+      }
+    }
+
+    loadCsv();
+
+  }, [getChose]); // 當 getChose 改變時重新執行
+};
 
