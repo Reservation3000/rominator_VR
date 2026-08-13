@@ -15,41 +15,44 @@ export const Box = ({position , color }) => {
 
   return (
     <mesh position={position} >
-      <ringGeometry args={[0.3, 1, 32]} />
+      <ringGeometry args={[1, 3.8, 32]} />
       <meshStandardMaterial color={color} />
     </mesh>
   );
 }
 
-export const Note = ({position , color ,getval}) => {
-  return (
-    <>
-        <mesh position={position} >
-          <ringGeometry args={[getval-0.05, getval, 32, 1, 0, Math.PI * 2 * 0.32]} />
-          <meshStandardMaterial color={color} />
-        </mesh>
-    </>
-  );
-}
-
-export const GameMusicComponent = ({ getChose , onTimeUpdate }) => {
-  
+export const GameMusicComponent = ({ getChose, setMusicTimeMs }) => {
   const musicChose = useRef(null);
 
-    return (
-      <>
-       {/* src 帶入音檔路徑  autoPlay 載入就自動播放  controls顯示播放控制條*/}
-        <audio src={getChose.mp3} 
-              ref={musicChose}
-              autoPlay 
-              onTimeUpdate={(e) => {
-              if (onTimeUpdate) {
-                onTimeUpdate(e.currentTarget.currentTime); // 傳回當前秒數
-              }
-            }}
-        />
-       </>
-    );
+  useEffect(() => {
+    if (!musicChose.current) return;
+
+    let rafId;
+
+    const tick = () => {
+      if (musicChose.current) {
+        const now = musicChose.current.currentTime * 1000;
+        setMusicTimeMs(now);
+      }
+
+      rafId = requestAnimationFrame(tick);
+    };
+
+    rafId = requestAnimationFrame(tick);
+
+    return () => cancelAnimationFrame(rafId);
+  }, [getChose, setMusicTimeMs]);
+
+  if (!getChose.mp3) return null;
+
+  return (
+    <audio style={{ top: '50px', position: 'relative' }}
+      ref={musicChose}
+      src={getChose.mp3}
+      autoPlay
+      controls
+    />
+  );
 }
 
 export const SliderComponent = ({setVal}) => {
@@ -159,7 +162,9 @@ export const MenuMusicComponent = ({ getTouch , getChose}) => {
   return (
     <>
       {/* src 帶入音檔路徑  autoPlay 載入就自動播放  controls顯示播放控制條*/}
-      <audio src={getTouch.mp3} 
+      <audio 
+            style={{ position: 'absolute' }}
+            src={getTouch.mp3} 
              ref={musicTouched}
              autoPlay 
              onLoadedMetadata={(e) => {
@@ -172,7 +177,7 @@ export const MenuMusicComponent = ({ getTouch , getChose}) => {
 };
 
 export const ShowChoseSong = ({ getChose , setStatus}) => {
-  const [getTime, setTime] = useState(3);  // 3秒
+  const [getTime, setTime] = useState(2);  // 3秒
 
   useEffect(() => {
     let interval = null;   //interval=間隔
@@ -196,8 +201,8 @@ export const ShowChoseSong = ({ getChose , setStatus}) => {
   );
 };
 
-/* 把getChose的樂曲資料，抓csv資料並做分類處裡，並丟進setNoteData */
-export const ProcessChoseCSVData = ({ getChose , setNoteData }) => {
+/* 把getChose的樂曲資料，抓csv資料並做分類處裡，並丟進setNoteCSVData */
+export const ProcessChoseCSVData = ({ getChose , setNoteCSVData }) => {
   useEffect(() =>{
     const loadCsv = async () => {
       if(!getChose)return[];
@@ -247,7 +252,40 @@ export const ProcessChoseCSVData = ({ getChose , setNoteData }) => {
           }
         }
 
-        setNoteData(data); // 把處理好的資料存進 State
+        const processedNotes = data.map((item) => {
+        if (item.type === 'drag') {
+          const density = 10; // 或者是 item.density
+          return {
+            ...item,
+            density: density,
+            noteSpeed: 0.05,
+            startPosition: 3.8,
+            endPosition: 1.5,
+            lifePosition: 1,
+            notePosition: 5,
+            segmentStates: Array.from({ length: density + 1 }, () => ({
+              isJudged: false,
+              isActive: false,
+              judgeStyle: 0,
+            })),
+          };
+        } else {
+          return {
+            ...item,
+            noteSpeed: 0.05,
+            startPosition: 3.8,
+            endPosition: 1.5,
+            lifePosition: 1,
+            isActive: false,
+            isJudged: false,
+            judgeStyle: 0,
+            notePosition: 5,
+          };
+        }
+      });
+
+        setNoteCSVData(processedNotes); // 把處理好的資料存進 State
+        console.log(processedNotes);
         
       }catch(error) {
 
@@ -259,5 +297,269 @@ export const ProcessChoseCSVData = ({ getChose , setNoteData }) => {
     loadCsv();
 
   }, [getChose]); // 當 getChose 改變時重新執行
+};
+
+export const LogicOfNotes = ({ getMusicTimeMs , onlyNotes , setPrefect , setGood , setMiss , setCommbo}) => {
+  if (!onlyNotes) return null;
+
+  return (
+    <>
+      {onlyNotes.map((note, index) => {
+        if (note.isJudged ) return null;
+
+        // 2. 計算時間與位置
+        const requiredMs = (note.startPosition - note.endPosition) / note.noteSpeed * (1000 / 60);
+        const elapsedMs = getMusicTimeMs - (note.triggerTime - requiredMs);
+
+        let nextNote = { ...note }; //複製一份新的物件
+
+        if (elapsedMs < 0) {
+          nextNote.isActive = false;
+          nextNote.notePosition = note.startPosition;
+        } else {
+          nextNote.isActive = true;
+          const elapsedFrames = elapsedMs / (1000 / 60);
+          nextNote.notePosition = note.startPosition - note.noteSpeed * elapsedFrames;
+        }
+
+        if (nextNote.notePosition <= nextNote.lifePosition) {
+          nextNote.isActive = false;
+          nextNote.isJudged = true;
+          nextNote.judgeStyle = 3;
+        }
+
+        if (!nextNote.isActive) return null;
+
+        // ==========================================
+        // 讓 noteLand (0~31) 轉成 0 到 360 度 (Math.PI * 2)
+        // ==========================================
+        const anglePerTrack = Math.PI / 16   ;
+        const currentAngle = nextNote.noteLand * anglePerTrack;
+        const arcLong = anglePerTrack+0.4;
+
+        // 4. 定義環形的大小 (跟隨 notePosition 變動)
+        // innerRadius 是音符內徑，outerRadius 是外徑
+        const outerRadius = nextNote.notePosition;
+        const innerRadius = outerRadius - 0.1;
+
+        console.log("requiredMs:"+requiredMs," elapsedMs"+elapsedMs," getMusicTimeMs"+getMusicTimeMs,
+          " outerRadius"+outerRadius
+        );
+
+        // //計算與判定線的距離
+        // const getNoteCenterAngle = nextNote.noteLand * Math.PI / 16;
+        // const noteAngleDeg = degrees(this.getNoteCenterAngle()); // 將音符的角度(弧度)轉為度數
+        // const angleDiff = Math.abs(angleCount_360L() - noteAngleDeg);
+
+
+        if (!nextNote.isJudged){
+          //miss不受角度干擾
+          // if (nextNote.notePosition <= nextNote.lifePosition) {
+          //   nextNote.judgeStyle = 3; 
+          // }
+          // else if (nextNote.notePosition < nextNote.endPosition)
+          // {
+          //   if(Math.abs(nextNote.getNoteAngleDiff()) <= 0.15) {
+          //     this.judgeStyle = 1; 
+          //   } else if(Math.abs(nextNote.getNoteAngleDiff()) <= 0.4) {
+          //     this.judgeStyle = 2; 
+          //   } 
+          // }
+
+          switch(nextNote.judgeStyle) {
+          case 1:
+            nextNote.isJudged = true;
+            nextNote.isActive = false;
+            setPrefect((prev) => prev + 1);
+            setCommbo((prev) => prev + 1);
+            break;
+          case 2:
+            nextNote.isJudged = true;
+            nextNote.isActive = false;
+            setGood((prev) => prev + 1);
+            setCommbo((prev) => prev + 1);
+            break;
+          case 3:
+            nextNote.isJudged = true;
+            nextNote.isActive = false;
+            setMiss((prev) => prev + 1);
+            setCommbo(0);
+            break;
+          }
+        }
+
+        
+
+
+        return (
+          <group key={note.id || index} rotation={[0, 0, currentAngle]}>
+            <mesh>
+              {/* 
+                ringGeometry 參數說明：
+                args: [innerRadius, outerRadius, thetaSegments, phiSegments, thetaStart, thetaLength]
+                我們用 thetaStart 和 thetaLength 來控制音符弧度的大小 (例如佔一小段角度)
+              */}
+              <ringGeometry args={[innerRadius, outerRadius, 32, 1, 0, arcLong]} />
+              <meshStandardMaterial color='rgb(205, 205, 209)' side={2} />
+            </mesh>
+          </group>
+        );
+      })}
+    </>
+  );
+};
+
+
+export const LogicOfRotate = ({ getMusicTimeMs , onlyRotate }) => {
+  if (!onlyRotate) return null;
+
+  return (
+    <>
+      {onlyRotate.map((note, index) => {
+        if (note.isJudged ) return null;
+
+        // 2. 計算時間與位置
+        const requiredMs = (note.startPosition - note.endPosition) / note.noteSpeed * (1000 / 60);
+        const elapsedMs = getMusicTimeMs - (note.triggerTime - requiredMs);
+
+        let nextNote = { ...note }; //複製一份新的物件
+
+        if (elapsedMs < 0) {
+          nextNote.isActive = false;
+          nextNote.notePosition = note.startPosition;
+        } else {
+          nextNote.isActive = true;
+          const elapsedFrames = elapsedMs / (1000 / 60);
+          nextNote.notePosition = note.startPosition - note.noteSpeed * elapsedFrames;
+        }
+
+        if (nextNote.notePosition <= nextNote.lifePosition) {
+          nextNote.isActive = false;
+          nextNote.isJudged = true;
+          nextNote.judgeStyle = 3;
+        }
+
+        if (!nextNote.isActive) return null;
+
+        // 定義環形的大小 (跟隨 notePosition 變動)
+        // innerRadius 是音符內徑，outerRadius 是外徑
+        const outerRadius = nextNote.notePosition;
+        const innerRadius = outerRadius - - 0.05;
+
+        const noteColor = note.direction === 1 ? 'red' : 'blue';
+
+        return (
+          <group key={note.id || index} >
+            <mesh>
+              {/* 
+                ringGeometry 參數說明：
+                args: [innerRadius, outerRadius, thetaSegments, phiSegments, thetaStart, thetaLength]
+                我們用 thetaStart 和 thetaLength 來控制音符弧度的大小 (例如佔一小段角度)
+              */}
+              <ringGeometry args={[innerRadius, outerRadius, 32, 1, 0 ]} />
+              <meshStandardMaterial color={noteColor} side={2} />
+            </mesh>
+          </group>
+        );
+      })}
+    </>
+  );
+};
+
+
+export const LogicOfDarg = ({ getMusicTimeMs, onlyDrag }) => {
+  if (!onlyDrag) return null;
+
+  return (
+    <>
+      {onlyDrag.map((note, index) => {
+        // 如果整個 note 已經判定完畢，跳過
+        if (note.isJudged) return null;
+
+        // 計算時間與位置
+        const requiredMs = (note.startPosition - note.endPosition) / note.noteSpeed * (1000 / 60);
+        
+        // 效能優化：時間還沒到或已結束太久，跳過
+        if (getMusicTimeMs < note.triggerTimeStart - requiredMs - 2000) return null;
+        if (getMusicTimeMs > note.triggerTimeEnd + 2000) return null;
+
+        // 每個細分音符之間的平均毫秒數
+        const averageMs = (note.triggerTimeEnd - note.triggerTimeStart) / note.density; 
+       
+        // 計算拖曳總角度距離（含順逆時針修正）
+        let diff = note.noteLandEnd - note.noteLandStart;
+        if (note.direction === 1) { // 順時針
+          if (diff < 0) diff += 32;
+        } else { // 逆時針
+          if (diff > 0) diff -= 32;
+        }
+        // 每個細分音符之間的平均角度差
+        let averageAng = diff / note.density; 
+
+        // 收集要渲染的每一個區段
+        const segmentsToRender = [];
+
+        for (let i = 0; i <= note.density; i++) {
+          // 計算每個細分音符的觸發時間
+          const everyDragTriggerTime = note.triggerTimeStart + averageMs * i;
+          // 計算每個細分音符的落點角度
+          const everyDragLand = note.noteLandStart + averageAng * i;
+          // 從應該啟動的時間算起經過了多少毫秒
+          const elapsedMs = getMusicTimeMs - (everyDragTriggerTime - requiredMs);
+          // 每個小音符如果時間還沒到就不繪製
+          if (elapsedMs < 0) {
+            continue; 
+          }
+
+          let everyNotePosition;
+          if (elapsedMs < 0) {
+            // 還沒啟動，停在初始位置
+            everyNotePosition = note.startPosition;
+          } else {
+            // 已啟動，計算已下降的距離
+            const elapsedFrames = elapsedMs / (1000 / 60);
+            everyNotePosition = note.startPosition - note.noteSpeed * elapsedFrames;
+          }
+
+          // 生命線檢查（若超出範圍則不畫這個區段）
+          if (everyNotePosition <= note.lifePosition) {
+            continue; 
+          }
+
+          // 如果還沒到起始位置或已經過期，不畫
+          if (everyNotePosition > note.startPosition) {
+            continue;
+          }
+
+          // 定義環形的大小 (使用當前計算出來的 everyNotePosition)
+          const outerRadius = everyNotePosition;
+          const innerRadius = outerRadius - 0.05;
+
+          // 計算環形弧度 (將 32 等分轉為弳輻)
+          const arcWidth = Math.PI / 16 + 0.4; // 可依需求調整弧寬
+          const centerAngle = everyDragLand * ((Math.PI * 2) / 32);
+          const thetaStart = centerAngle - arcWidth / 2;
+          const thetaLength = arcWidth;
+
+          segmentsToRender.push(
+            <mesh key={`seg-${i}`}>
+              {/* 
+                ringGeometry 參數：
+                [innerRadius, outerRadius, thetaSegments, phiSegments, thetaStart, thetaLength]
+              */}
+              <ringGeometry args={[innerRadius, outerRadius, 32, 1, thetaStart, thetaLength]} />
+              <meshStandardMaterial side={2} emissive="rgb(205, 205, 209)" emissiveIntensity={10}/>
+            </mesh>
+          );
+        }
+
+        return (
+          <group key={note.id || index}>
+            {segmentsToRender}
+          </group>
+        );
+      })}
+    </>
+  );
 };
 
