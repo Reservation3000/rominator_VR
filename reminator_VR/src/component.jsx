@@ -6,6 +6,8 @@ import {  Space , Button } from 'antd';
 import { useMouse } from "@reactuses/core";
 import  Papa  from  'papaparse' ;
 
+import { getRotateJudgeAngle } from "./Js.js"
+
 
 export const Box = ({position , color }) => {
   // const ref = useRef();
@@ -303,10 +305,7 @@ export const ProcessChoseCSVData = ({ getChose , setNoteCSVData }) => {
 export const LogicOfNotes = ({ getMusicTimeMs , onlyNotes , setPrefect , setGood , setMiss , setCommbo ,getCommbo , mouseXR}) => {
   if (!onlyNotes) return null;
   const activeNotes = onlyNotes.filter(note => !note.isJudged);
-  const playHitSound = () => {
-    const audio = new Audio('https://mg.reservationfurry.art/assest/hit.mp3');
-    audio.play().catch(e => console.log('Audio play failed:', e));
-  };
+  
 
   return (
     <>
@@ -366,14 +365,14 @@ export const LogicOfNotes = ({ getMusicTimeMs , onlyNotes , setPrefect , setGood
             case 1:
               note.isJudged = true;
               note.isActive = false;
-              playHitSound();
+              PlayHitSound();
               setPrefect((prev) => prev + 1);
               setCommbo((prev) => prev + 1);
               break;
             case 2:
               note.isJudged = true;
               note.isActive = false;
-              playHitSound();
+              PlayHitSound();
               setGood((prev) => prev + 1);
               setCommbo((prev) => prev + 1);
               break;
@@ -389,7 +388,7 @@ export const LogicOfNotes = ({ getMusicTimeMs , onlyNotes , setPrefect , setGood
         
         if(note.isJudged){
           note.notePosition=0;
-        console.log(note.isJudged + " " + getCommbo + " judgeStyle=" + note.judgeStyle + " notePos=" + note.notePosition);
+        // console.log(note.isJudged + " " + getCommbo + " judgeStyle=" + note.judgeStyle + " notePos=" + note.notePosition);
         }
         
  
@@ -414,43 +413,106 @@ export const LogicOfNotes = ({ getMusicTimeMs , onlyNotes , setPrefect , setGood
 };
 
 
-export const LogicOfRotate = ({ getMusicTimeMs , onlyRotate }) => {
+export const LogicOfRotate = ({ getMusicTimeMs , onlyRotate , setPrefect , setGood , setMiss , setCommbo}) => {
   if (!onlyRotate) return null;
+  const activeNotes = onlyRotate.filter(note => !note.isJudged);
+
+  const AngleDiff = getRotateJudgeAngle();
+
+  const now = getMusicTimeMs;
+
 
   return (
     <>
-      {onlyRotate.map((note, index) => {
+      {activeNotes.map((note, index) => {
         if (note.isJudged ) return null;
 
         // 2. 計算時間與位置
         const requiredMs = (note.startPosition - note.endPosition) / note.noteSpeed * (1000 / 60);
         const elapsedMs = getMusicTimeMs - (note.triggerTime - requiredMs);
 
-        let nextNote = { ...note }; //複製一份新的物件
+        // let nextNote = { ...note }; //複製一份新的物件
 
         if (elapsedMs < 0) {
-          nextNote.isActive = false;
-          nextNote.notePosition = note.startPosition;
+          note.isActive = false;
+          note.notePosition = note.startPosition;
         } else {
-          nextNote.isActive = true;
+          note.isActive = true;
           const elapsedFrames = elapsedMs / (1000 / 60);
-          nextNote.notePosition = note.startPosition - note.noteSpeed * elapsedFrames;
+          note.notePosition = note.startPosition - note.noteSpeed * elapsedFrames;
         }
 
-        if (nextNote.notePosition <= nextNote.lifePosition) {
-          nextNote.isActive = false;
-          nextNote.isJudged = true;
-          nextNote.judgeStyle = 3;
+        if (note.notePosition <= note.lifePosition) {
+          note.isActive = false;
+          note.isJudged = true;
+          note.judgeStyle = 3;
         }
 
-        if (!nextNote.isActive) return null;
+        if (!note.isActive) return null;
 
         // 定義環形的大小 (跟隨 notePosition 變動)
         // innerRadius 是音符內徑，outerRadius 是外徑
-        const outerRadius = nextNote.notePosition;
-        const innerRadius = outerRadius - - 0.05;
+        const outerRadius = note.notePosition;
+        const innerRadius = outerRadius  - 0.05;
 
         const noteColor = note.direction === 1 ? 'red' : 'blue';
+
+
+
+
+      if (note.isJudged == false) {
+       if (note.notePosition <= note.lifePosition) { //miss
+            note.judgeStyle = 3; 
+       }else if (Math.abs(now - note.triggerTime) <= 30){   // prefect
+          if (AngleDiff === 1 && note.direction === 1 || AngleDiff === 2 && note.direction === 0) {
+            note.judgeStyle = 1;
+          }
+        }else if (now - note.triggerTime >= 50 )    // great
+        {
+          if (AngleDiff === 1 && note.direction === 1 || AngleDiff === 2 && note.direction === 0) {
+            note.judgeStyle = 1;
+          }
+        }
+
+        console.log(now - note.triggerTime);
+      if (note.judgeStyle > 0) {
+            switch(note.judgeStyle) {
+            case 1:
+              note.isJudged = true;
+              note.isActive = false;
+              PlayHitSound();
+              setPrefect((prev) => prev + 1);
+              setCommbo((prev) => prev + 1);
+              break;
+            case 2:
+              note.isJudged = true;
+              note.isActive = false;
+              PlayHitSound();
+              setGood((prev) => prev + 1);
+              setCommbo((prev) => prev + 1);
+              break;
+            case 3:
+              note.isJudged = true;
+              note.isActive = false;
+              setMiss((prev) => prev + 1);
+              setCommbo(0);
+              break;
+            }
+          }
+        
+    }
+
+    if(note.isJudged){
+      note.notePosition=0;
+    }
+      
+        // if (AngleDiff === 1) {
+        //     console.log("順時針");
+        //   }
+
+        //   if (AngleDiff === 2) {
+        //     console.log("逆時針");
+        //   }
 
         return (
           <group key={note.id || index} >
@@ -567,31 +629,28 @@ export const LogicOfDarg = ({ getMusicTimeMs, onlyDrag }) => {
   );
 };
 
-export const PlayerMark = ({ mouseX }) => {
+export const PlayerMark = ({ mouseXR }) => {
   const arcLong = (Math.PI / 16) + 0.4
   const halfArcLong = arcLong/2
   return (
-    <mesh rotation={[0, 0, mouseX]}>
+    <mesh rotation={[0, 0, mouseXR]}>
       <ringGeometry args={[1, 1.1, 32, 1, -halfArcLong, arcLong ]} />
       <meshStandardMaterial color="rgb(255, 236, 33)" side={2} />
     </mesh>
   );
 };
 
-export function MouseTrackerR() {
-  const mouse = useMouse();
-  const width = window.innerWidth;
 
-  const rad =(mouse.clientX / width) * Math.PI * 2;
+const PlayHitSound = () => {
+  const audio = new Audio('https://mg.reservationfurry.art/assest/hit.mp3');
 
-  return rad;
-}
+  audio.play().catch(e => {
+    console.log('Audio play failed:', e);
+  });
+};
 
-export function MouseTrackerD() {
-  const mouse = useMouse();
-  const width = window.innerWidth;
-  
-  const degrees = (mouse.clientX / width) * 360;
 
-  return degrees
-}
+
+
+
+

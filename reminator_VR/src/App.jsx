@@ -18,10 +18,14 @@ import {
   LogicOfNotes,
   LogicOfRotate,
   LogicOfDarg,
-  MouseTrackerR,
-  MouseTrackerD,
   PlayerMark
 } from "./component.jsx";
+
+import { 
+  MouseTrackerR,
+  MouseTrackerD,
+  getRotateJudgeAngle
+} from "./Js.js"
 
 import { 
   serverURL 
@@ -72,12 +76,9 @@ function App() {
       .catch(err => console.log(err));
   },[])
 
-  
   const mouseXR = MouseTrackerR();
   const mouseXD = MouseTrackerD();
-  // console.log(mouseXR , " " , mouseXD);
-
-
+  
 
   //===============================================================
   // return =======================================================
@@ -127,9 +128,15 @@ function App() {
                             getCommbo={getCommbo}
                             mouseXR={mouseXR}
               />
-              <LogicOfRotate getMusicTimeMs={getMusicTimeMs} onlyRotate={onlyRotate}/>
+              <LogicOfRotate  getMusicTimeMs={getMusicTimeMs} 
+                              onlyRotate={onlyRotate}
+                              setPrefect ={setPrefect}
+                              setGood={setGood}
+                              setMiss={setMiss}
+                              setCommbo={setCommbo}
+              />
               <LogicOfDarg getMusicTimeMs={getMusicTimeMs} onlyDrag={onlyDrag}/>
-              <PlayerMark mouseX={mouseXR}/>
+              <PlayerMark mouseXR={mouseXR}/>
               <Box position={[0, 0, 0]} color="rgba(83, 83, 83, 0.21)"/>
             </Canvas>
           </main>
