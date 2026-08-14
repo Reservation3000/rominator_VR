@@ -6,7 +6,9 @@ import {  Space , Button } from 'antd';
 import { useMouse } from "@reactuses/core";
 import  Papa  from  'papaparse' ;
 
-import { getRotateJudgeAngle } from "./Js.js"
+import {  getRotateJudgeAngle,
+          PlayHitSound
+} from "./Js.js"
 
 
 export const Box = ({position , color }) => {
@@ -302,7 +304,7 @@ export const ProcessChoseCSVData = ({ getChose , setNoteCSVData }) => {
   }, [getChose]); // 當 getChose 改變時重新執行
 };
 
-export const LogicOfNotes = ({ getMusicTimeMs , onlyNotes , setPrefect , setGood , setMiss , setCommbo ,getCommbo , mouseXR}) => {
+export const LogicOfNotes = ({ getMusicTimeMs , onlyNotes , setPrefect , setGood , setMiss , setCommbo , mouseXR}) => {
   if (!onlyNotes) return null;
   const activeNotes = onlyNotes.filter(note => !note.isJudged);
   
@@ -361,24 +363,21 @@ export const LogicOfNotes = ({ getMusicTimeMs , onlyNotes , setPrefect , setGood
           }
 
           if (note.judgeStyle > 0) {
+            note.isJudged = true;
+            note.isActive = false;
+
             switch(note.judgeStyle) {
             case 1:
-              note.isJudged = true;
-              note.isActive = false;
               PlayHitSound();
               setPrefect((prev) => prev + 1);
               setCommbo((prev) => prev + 1);
               break;
             case 2:
-              note.isJudged = true;
-              note.isActive = false;
               PlayHitSound();
               setGood((prev) => prev + 1);
               setCommbo((prev) => prev + 1);
               break;
             case 3:
-              note.isJudged = true;
-              note.isActive = false;
               setMiss((prev) => prev + 1);
               setCommbo(0);
               break;
@@ -390,10 +389,7 @@ export const LogicOfNotes = ({ getMusicTimeMs , onlyNotes , setPrefect , setGood
           note.notePosition=0;
         // console.log(note.isJudged + " " + getCommbo + " judgeStyle=" + note.judgeStyle + " notePos=" + note.notePosition);
         }
-        
- 
-
-
+      
         return (
           <group key={note.id || index} rotation={[0, 0, currentAngle]}>
             <mesh>
@@ -474,26 +470,22 @@ export const LogicOfRotate = ({ getMusicTimeMs , onlyRotate , setPrefect , setGo
           }
         }
 
-        console.log(now - note.triggerTime);
       if (note.judgeStyle > 0) {
+            note.isJudged = true;
+            note.isActive = false;
+
             switch(note.judgeStyle) {
             case 1:
-              note.isJudged = true;
-              note.isActive = false;
               PlayHitSound();
               setPrefect((prev) => prev + 1);
               setCommbo((prev) => prev + 1);
               break;
             case 2:
-              note.isJudged = true;
-              note.isActive = false;
               PlayHitSound();
               setGood((prev) => prev + 1);
               setCommbo((prev) => prev + 1);
               break;
             case 3:
-              note.isJudged = true;
-              note.isActive = false;
               setMiss((prev) => prev + 1);
               setCommbo(0);
               break;
@@ -533,7 +525,7 @@ export const LogicOfRotate = ({ getMusicTimeMs , onlyRotate , setPrefect , setGo
 };
 
 
-export const LogicOfDarg = ({ getMusicTimeMs, onlyDrag }) => {
+export const LogicOfDarg = ({ getMusicTimeMs, onlyDrag, mouseXR, setPrefect, setGood, setMiss, setCommbo }) => {
   if (!onlyDrag) return null;
 
   return (
@@ -563,7 +555,7 @@ export const LogicOfDarg = ({ getMusicTimeMs, onlyDrag }) => {
         let averageAng = diff / note.density; 
 
         // 收集要渲染的每一個區段
-        const segmentsToRender = [];
+        const subdivideNotes = [];
 
         for (let i = 0; i <= note.density; i++) {
           // 計算每個細分音符的觸發時間
@@ -572,6 +564,12 @@ export const LogicOfDarg = ({ getMusicTimeMs, onlyDrag }) => {
           const everyDragLand = note.noteLandStart + averageAng * i;
           // 從應該啟動的時間算起經過了多少毫秒
           const elapsedMs = getMusicTimeMs - (everyDragTriggerTime - requiredMs);
+          
+          // 如果已經被判定過，不繪製
+          if (note.segmentStates && note.segmentStates[i] && note.segmentStates[i].isJudged) {
+            continue;
+          }
+          
           // 每個小音符如果時間還沒到就不繪製
           if (elapsedMs < 0) {
             continue; 
@@ -587,14 +585,59 @@ export const LogicOfDarg = ({ getMusicTimeMs, onlyDrag }) => {
             everyNotePosition = note.startPosition - note.noteSpeed * elapsedFrames;
           }
 
-          // 生命線檢查（若超出範圍則不畫這個區段）
+          // 生命線檢查（若超出範圍則不判定）
           if (everyNotePosition <= note.lifePosition) {
+            if (note.segmentStates && note.segmentStates[i]) {
+              note.segmentStates[i].isJudged = true;
+              note.segmentStates[i].judgeStyle = 3;  // Miss
+              setMiss((prev) => prev + 1);
+              setCommbo(0);
+            }
             continue; 
           }
 
-          // 如果還沒到起始位置或已經過期，不畫
+          // 如果還沒到起始位置，不畫
           if (everyNotePosition > note.startPosition) {
             continue;
+          }
+
+          // ==========================================
+          // 應用 LogicOfNotes 的判定邏輯
+          // ==========================================
+          const everyNoteCenterAngle = everyDragLand * Math.PI / 16;  // 轉成弧度
+          const angleDiff = Math.abs(mouseXR - everyNoteCenterAngle);  // 角度差
+          const angleDiff_D = angleDiff * (180 / Math.PI);  // 轉成度數
+
+          let segmentJudgeStyle = 0;
+
+          if (everyNotePosition <= note.endPosition) {
+            if (angleDiff_D <= 7) {
+              segmentJudgeStyle = 1;  // Perfect
+            } else if (angleDiff_D <= 15) {
+              segmentJudgeStyle = 2;  // Good
+            }
+          }
+
+          // 記錄判定結果，如果判定過就不繪製
+          if (segmentJudgeStyle > 0) {
+            if (note.segmentStates && note.segmentStates[i]) {
+              note.segmentStates[i].isJudged = true;
+              note.segmentStates[i].judgeStyle = segmentJudgeStyle;
+
+              switch (segmentJudgeStyle) {
+                case 1:
+                  PlayHitSound();
+                  setPrefect((prev) => prev + 1);
+                  setCommbo((prev) => prev + 1);
+                  break;
+                case 2:
+                  PlayHitSound();
+                  setGood((prev) => prev + 1);
+                  setCommbo((prev) => prev + 1);
+                  break;
+              }
+            }
+            continue;  // 判定過的不繪製
           }
 
           // 定義環形的大小 (使用當前計算出來的 everyNotePosition)
@@ -606,13 +649,11 @@ export const LogicOfDarg = ({ getMusicTimeMs, onlyDrag }) => {
           const centerAngle = everyDragLand * ((Math.PI * 2) / 32);
           const thetaStart = centerAngle - arcWidth / 2;
           const thetaLength = arcWidth;
+          
 
-          segmentsToRender.push(
+          subdivideNotes.push(
             <mesh key={`seg-${i}`}>
-              {/* 
-                ringGeometry 參數：
-                [innerRadius, outerRadius, thetaSegments, phiSegments, thetaStart, thetaLength]
-              */}
+              {/* ringGeometry 參數：[innerRadius, outerRadius, thetaSegments, phiSegments, thetaStart, thetaLength]*/}
               <ringGeometry args={[innerRadius, outerRadius, 32, 1, thetaStart, thetaLength]} />
               <meshStandardMaterial side={2} emissive="rgb(205, 205, 209)" emissiveIntensity={10}/>
             </mesh>
@@ -621,7 +662,7 @@ export const LogicOfDarg = ({ getMusicTimeMs, onlyDrag }) => {
 
         return (
           <group key={note.id || index}>
-            {segmentsToRender}
+            {subdivideNotes}
           </group>
         );
       })}
@@ -641,13 +682,7 @@ export const PlayerMark = ({ mouseXR }) => {
 };
 
 
-const PlayHitSound = () => {
-  const audio = new Audio('https://mg.reservationfurry.art/assest/hit.mp3');
 
-  audio.play().catch(e => {
-    console.log('Audio play failed:', e);
-  });
-};
 
 
 

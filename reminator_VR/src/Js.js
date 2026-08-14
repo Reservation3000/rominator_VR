@@ -1,4 +1,14 @@
 //===============================================================================
+export const PlayHitSound = () => {
+  const audio = new Audio('https://mg.reservationfurry.art/assest/hit.mp3');
+
+  audio.play().catch(e => {
+    console.log('Audio play failed:', e);
+  });
+};
+
+
+//===============================================================================
 let mouseXR = 0;    
 
 window.addEventListener("mousemove", (event) => {

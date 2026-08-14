@@ -135,7 +135,14 @@ function App() {
                               setMiss={setMiss}
                               setCommbo={setCommbo}
               />
-              <LogicOfDarg getMusicTimeMs={getMusicTimeMs} onlyDrag={onlyDrag}/>
+              <LogicOfDarg  getMusicTimeMs={getMusicTimeMs} 
+                            onlyDrag={onlyDrag}
+                            mouseXR={mouseXR}
+                            setPrefect={setPrefect}
+                            setGood={setGood}
+                            setMiss={setMiss}
+                            setCommbo={setCommbo}
+              />
               <PlayerMark mouseXR={mouseXR}/>
               <Box position={[0, 0, 0]} color="rgba(83, 83, 83, 0.21)"/>
             </Canvas>
