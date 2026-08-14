@@ -17,7 +17,10 @@ import {
   GameMusicComponent,
   LogicOfNotes,
   LogicOfRotate,
-  LogicOfDarg
+  LogicOfDarg,
+  MouseTrackerR,
+  MouseTrackerD,
+  PlayerMark
 } from "./component.jsx";
 
 import { 
@@ -70,6 +73,9 @@ function App() {
   },[])
 
   
+  const mouseXR = MouseTrackerR();
+  const mouseXD = MouseTrackerD();
+  // console.log(mouseXR , " " , mouseXD);
 
 
 
@@ -118,9 +124,12 @@ function App() {
                             setGood={setGood} 
                             setMiss={setMiss} 
                             setCommbo={setCommbo}
+                            getCommbo={getCommbo}
+                            mouseXR={mouseXR}
               />
               <LogicOfRotate getMusicTimeMs={getMusicTimeMs} onlyRotate={onlyRotate}/>
               <LogicOfDarg getMusicTimeMs={getMusicTimeMs} onlyDrag={onlyDrag}/>
+              <PlayerMark mouseX={mouseXR}/>
               <Box position={[0, 0, 0]} color="rgba(83, 83, 83, 0.21)"/>
             </Canvas>
           </main>

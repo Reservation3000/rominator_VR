@@ -3,6 +3,7 @@ import { Card, Col, Row } from 'antd';
 import { useRef, useEffect ,  useState } from 'react';
 import { Avatar } from 'antd';
 import {  Space , Button } from 'antd';
+import { useMouse } from "@reactuses/core";
 import  Papa  from  'papaparse' ;
 
 
@@ -299,96 +300,99 @@ export const ProcessChoseCSVData = ({ getChose , setNoteCSVData }) => {
   }, [getChose]); // 當 getChose 改變時重新執行
 };
 
-export const LogicOfNotes = ({ getMusicTimeMs , onlyNotes , setPrefect , setGood , setMiss , setCommbo}) => {
+export const LogicOfNotes = ({ getMusicTimeMs , onlyNotes , setPrefect , setGood , setMiss , setCommbo ,getCommbo , mouseXR}) => {
   if (!onlyNotes) return null;
+  const activeNotes = onlyNotes.filter(note => !note.isJudged);
+  const playHitSound = () => {
+    const audio = new Audio('https://mg.reservationfurry.art/assest/hit.mp3');
+    audio.play().catch(e => console.log('Audio play failed:', e));
+  };
 
   return (
     <>
-      {onlyNotes.map((note, index) => {
-        if (note.isJudged ) return null;
-
+      {activeNotes.map((note, index) => {
         // 2. 計算時間與位置
         const requiredMs = (note.startPosition - note.endPosition) / note.noteSpeed * (1000 / 60);
         const elapsedMs = getMusicTimeMs - (note.triggerTime - requiredMs);
 
-        let nextNote = { ...note }; //複製一份新的物件
+        // let nextNote = { ...note }; //複製一份新的物件
 
         if (elapsedMs < 0) {
-          nextNote.isActive = false;
-          nextNote.notePosition = note.startPosition;
+          note.isActive = false;
+          note.notePosition = note.startPosition;
         } else {
-          nextNote.isActive = true;
+          note.isActive = true;
           const elapsedFrames = elapsedMs / (1000 / 60);
-          nextNote.notePosition = note.startPosition - note.noteSpeed * elapsedFrames;
+          note.notePosition = note.startPosition - note.noteSpeed * elapsedFrames;
         }
 
-        if (nextNote.notePosition <= nextNote.lifePosition) {
-          nextNote.isActive = false;
-          nextNote.isJudged = true;
-          nextNote.judgeStyle = 3;
-        }
-
-        if (!nextNote.isActive) return null;
+        if (!note.isActive) return null;
 
         // ==========================================
         // 讓 noteLand (0~31) 轉成 0 到 360 度 (Math.PI * 2)
         // ==========================================
         const anglePerTrack = Math.PI / 16   ;
-        const currentAngle = nextNote.noteLand * anglePerTrack;
+        const currentAngle = note.noteLand * anglePerTrack;
         const arcLong = anglePerTrack+0.4;
+        const halfArcLong = arcLong / 2;     
 
         // 4. 定義環形的大小 (跟隨 notePosition 變動)
         // innerRadius 是音符內徑，outerRadius 是外徑
-        const outerRadius = nextNote.notePosition;
+        const outerRadius = note.notePosition;
         const innerRadius = outerRadius - 0.1;
 
-        console.log("requiredMs:"+requiredMs," elapsedMs"+elapsedMs," getMusicTimeMs"+getMusicTimeMs,
-          " outerRadius"+outerRadius
-        );
+        // console.log("requiredMs:"+requiredMs," elapsedMs"+elapsedMs," getMusicTimeMs"+getMusicTimeMs,
+        //   " outerRadius"+outerRadius
+        // );
 
         // //計算與判定線的距離
-        // const getNoteCenterAngle = nextNote.noteLand * Math.PI / 16;
-        // const noteAngleDeg = degrees(this.getNoteCenterAngle()); // 將音符的角度(弧度)轉為度數
-        // const angleDiff = Math.abs(angleCount_360L() - noteAngleDeg);
+        const getNoteCenterAngle = note.noteLand * Math.PI / 16;  //轉成度數
+        const angleDiff = Math.abs(mouseXR - getNoteCenterAngle);    //滑鼠轉換的角度與音符相差多少
+        const angleDiff_D = angleDiff * (180 / Math.PI);
 
+        if (note.isJudged == false){
+          if (note.notePosition <= note.lifePosition) {
+            note.judgeStyle = 3; 
+          } else if (note.notePosition <= note.endPosition) {
+            if(angleDiff_D  <= 7) {
+              note.judgeStyle = 1; 
+            } else if(angleDiff_D  <= 15) {
+              note.judgeStyle = 2; 
+            } 
+          }
 
-        if (!nextNote.isJudged){
-          //miss不受角度干擾
-          // if (nextNote.notePosition <= nextNote.lifePosition) {
-          //   nextNote.judgeStyle = 3; 
-          // }
-          // else if (nextNote.notePosition < nextNote.endPosition)
-          // {
-          //   if(Math.abs(nextNote.getNoteAngleDiff()) <= 0.15) {
-          //     this.judgeStyle = 1; 
-          //   } else if(Math.abs(nextNote.getNoteAngleDiff()) <= 0.4) {
-          //     this.judgeStyle = 2; 
-          //   } 
-          // }
-
-          switch(nextNote.judgeStyle) {
-          case 1:
-            nextNote.isJudged = true;
-            nextNote.isActive = false;
-            setPrefect((prev) => prev + 1);
-            setCommbo((prev) => prev + 1);
-            break;
-          case 2:
-            nextNote.isJudged = true;
-            nextNote.isActive = false;
-            setGood((prev) => prev + 1);
-            setCommbo((prev) => prev + 1);
-            break;
-          case 3:
-            nextNote.isJudged = true;
-            nextNote.isActive = false;
-            setMiss((prev) => prev + 1);
-            setCommbo(0);
-            break;
+          if (note.judgeStyle > 0) {
+            switch(note.judgeStyle) {
+            case 1:
+              note.isJudged = true;
+              note.isActive = false;
+              playHitSound();
+              setPrefect((prev) => prev + 1);
+              setCommbo((prev) => prev + 1);
+              break;
+            case 2:
+              note.isJudged = true;
+              note.isActive = false;
+              playHitSound();
+              setGood((prev) => prev + 1);
+              setCommbo((prev) => prev + 1);
+              break;
+            case 3:
+              note.isJudged = true;
+              note.isActive = false;
+              setMiss((prev) => prev + 1);
+              setCommbo(0);
+              break;
+            }
           }
         }
-
         
+        if(note.isJudged){
+          note.notePosition=0;
+        console.log(note.isJudged + " " + getCommbo + " judgeStyle=" + note.judgeStyle + " notePos=" + note.notePosition);
+        }
+        
+ 
 
 
         return (
@@ -399,7 +403,7 @@ export const LogicOfNotes = ({ getMusicTimeMs , onlyNotes , setPrefect , setGood
                 args: [innerRadius, outerRadius, thetaSegments, phiSegments, thetaStart, thetaLength]
                 我們用 thetaStart 和 thetaLength 來控制音符弧度的大小 (例如佔一小段角度)
               */}
-              <ringGeometry args={[innerRadius, outerRadius, 32, 1, 0, arcLong]} />
+              <ringGeometry args={[innerRadius, outerRadius, 32, 1, -halfArcLong , arcLong]} />
               <meshStandardMaterial color='rgb(205, 205, 209)' side={2} />
             </mesh>
           </group>
@@ -563,3 +567,31 @@ export const LogicOfDarg = ({ getMusicTimeMs, onlyDrag }) => {
   );
 };
 
+export const PlayerMark = ({ mouseX }) => {
+  const arcLong = (Math.PI / 16) + 0.4
+  const halfArcLong = arcLong/2
+  return (
+    <mesh rotation={[0, 0, mouseX]}>
+      <ringGeometry args={[1, 1.1, 32, 1, -halfArcLong, arcLong ]} />
+      <meshStandardMaterial color="rgb(255, 236, 33)" side={2} />
+    </mesh>
+  );
+};
+
+export function MouseTrackerR() {
+  const mouse = useMouse();
+  const width = window.innerWidth;
+
+  const rad =(mouse.clientX / width) * Math.PI * 2;
+
+  return rad;
+}
+
+export function MouseTrackerD() {
+  const mouse = useMouse();
+  const width = window.innerWidth;
+  
+  const degrees = (mouse.clientX / width) * 360;
+
+  return degrees
+}
