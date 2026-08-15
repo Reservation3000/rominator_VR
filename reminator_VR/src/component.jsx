@@ -5,28 +5,54 @@ import { Avatar } from 'antd';
 import {  Space , Button } from 'antd';
 import { useMouse } from "@reactuses/core";
 import  Papa  from  'papaparse' ;
+import { Text } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
+import { PerspectiveCamera } from '@react-three/drei';
 
-import {  getRotateJudgeAngle,
-          PlayHitSound
-} from "./Js.js"
 
+export const CameraControler = ({ mouseXR }) => {
+  const cameraRef = useRef();
 
-export const Box = ({position , color }) => {
-  // const ref = useRef();
-  // useFrame((state, delta) => {
-  //   ref.current.rotation.x += delta;
-  //   ref.current.rotation.y += delta;
-  // });
+};
+
+export const Box = ({ position, getJudgeStatus }) => {
+  const color = getJudgeStatus === 'M' ? 'red' : 'white';
+  const colorBloomValue = getJudgeStatus === 'M' ? 3 : 0.5;
 
   return (
-    <mesh position={position} >
-      <ringGeometry args={[1, 3.8, 32]} />
-      <meshStandardMaterial color={color} />
-    </mesh>
+    <group position={position}>
+      {/* 圓形 Mesh */}
+      <mesh>
+        <circleGeometry args={[0.95, 32]} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={colorBloomValue-0.2} />
+      </mesh>
+
+      {/* 環形 Mesh */}
+      <mesh>
+        <ringGeometry args={[3.9, 3.93, 60, 1]} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={colorBloomValue} />
+      </mesh>
+    </group>
+  );
+};
+
+export const Roundabout =() =>{
+  return(
+    <div className="roundabout-container">
+      <svg className="roundabout" viewBox="0 0 100 100">
+        <path d="M 50 5 A 45 45 0 0 1 81.82 18.18" fill="none" stroke="white" strokeWidth="0.1" />
+        {/* 長弧相反側 */}
+        <path d="M 50 5 A 45 45 0 0 1 81.82 18.18" fill="none" stroke="white" strokeWidth="0.1" transform="rotate(180 50 50)" />
+        {/* 短弧，半徑較小 */}
+        <path d="M 53.75 7.16 A 43 43 0 0 1 77.64 17.06" fill="none" stroke="white" strokeWidth="0.1" />
+         {/* 短弧相反側 */}
+        <path d="M 53.75 7.16 A 43 43 0 0 1 77.64 17.06" fill="none" stroke="white" strokeWidth="0.1" transform="rotate(180 50 50)"/>
+      </svg>
+    </div>
   );
 }
 
-export const GameMusicComponent = ({ getChose, setMusicTimeMs }) => {
+export const GameMusicComponent = ({ getChose, setMusicTimeMs , setStatus}) => {
   const musicChose = useRef(null);
 
   useEffect(() => {
@@ -55,7 +81,7 @@ export const GameMusicComponent = ({ getChose, setMusicTimeMs }) => {
       ref={musicChose}
       src={getChose.mp3}
       autoPlay
-      controls
+      onEnded={() => setStatus(0)} //回到選歌介面
     />
   );
 }
@@ -87,48 +113,48 @@ export const MenuComponent = ({getsongs , setTouch , setChose , setStatus , getP
   );
 
   return (
-    <div className="Menu">
-        {pageNow.map((ID , index) => {
+      <div className="Menu">
+          {pageNow.map((ID , index) => {
 
-          //極座標轉換
-          // const angle = (index / total) * 2 * Math.PI;
-          // const radius = 200; 
+            //極座標轉換
+            // const angle = (index / total) * 2 * Math.PI;
+            // const radius = 200; 
 
-          // const x = radius * Math.cos(angle);
-          // const y = radius * Math.sin(angle);
-          const totalInThisPage = pageNow.length; //這頁有幾首歌
-          const angle = (index / totalInThisPage)*360;  // 這頁的x首歌平分角度
-            
-          return(
-        <div 
-          key={ID.id}
-          className="mgCardsWrapper" // 旋轉定位
-          // style={{ '--top': `calc(50% + ${y}px)`,  '--left': `calc(50% + ${x}px)`}}
-          style={{'--angle':`${angle}deg`}}
-        >
-          <Avatar className="mgCards" 
-                size={160}
-                title={ID.name} 
-                variant="borderless"
-                hoverable
-                src={ID.img}
-                onMouseEnter={() => setTouch(ID)}  //滑鼠摸到
-                onClick={() => {                   //滑鼠點擊
-                  setChose(ID);
-                  setStatus(1);
-                }}
-          />
+            // const x = radius * Math.cos(angle);
+            // const y = radius * Math.sin(angle);
+            const totalInThisPage = pageNow.length; //這頁有幾首歌
+            const angle = (index / totalInThisPage)*360;  // 這頁的x首歌平分角度
+              
+            return(
+          <div 
+            key={ID.id}
+            className="mgCardsWrapper" // 旋轉定位
+            // style={{ '--top': `calc(50% + ${y}px)`,  '--left': `calc(50% + ${x}px)`}}
+            style={{'--angle':`${angle}deg`}}
+          >
+            <Avatar className="mgCards" 
+                  size={160}
+                  title={ID.name} 
+                  variant="borderless"
+                  hoverable
+                  src={ID.img}
+                  onMouseEnter={() => setTouch(ID)}  //滑鼠摸到
+                  onClick={() => {                   //滑鼠點擊
+                    setChose(ID);
+                    setStatus(1);
+                  }}
+            />
 
-          <Avatar className='certenCircle'
-                size={30}
-                title={ID.name} 
-                variant="borderless"
-                hoverable
-          />
+            <Avatar className='certenCircle'
+                  size={30}
+                  title={ID.name} 
+                  variant="borderless"
+                  hoverable
+            />
 
-        </div>
-        )})}
-    </div>
+          </div>
+          )})}
+      </div>
   );
 }
 
@@ -182,7 +208,7 @@ export const MenuMusicComponent = ({ getTouch , getChose}) => {
 };
 
 export const ShowChoseSong = ({ getChose , setStatus}) => {
-  const [getTime, setTime] = useState(2);  // 3秒
+  const [getTime, setTime] = useState(1);  // 3秒
 
   useEffect(() => {
     let interval = null;   //interval=間隔
@@ -200,8 +226,12 @@ export const ShowChoseSong = ({ getChose , setStatus}) => {
   }, [getTime]);
 
   return (
-    <div className="showChoseSong">
-      <Avatar size={500} src={getChose.img} />
+    <div className="showChoseSongBack">
+      <div className="showChoseSong">
+        <div class="showChoseSongBack_Circle_0"></div>
+        <div class="showChoseSongBack_Circle_1"></div>
+        <Avatar size={500} src={getChose.img} />
+      </div>
     </div>
   );
 };
@@ -265,7 +295,7 @@ export const ProcessChoseCSVData = ({ getChose , setNoteCSVData }) => {
             density: density,
             noteSpeed: 0.05,
             startPosition: 3.8,
-            endPosition: 1.5,
+            endPosition: 1.2,
             lifePosition: 1,
             notePosition: 5,
             segmentStates: Array.from({ length: density + 1 }, () => ({
@@ -279,7 +309,7 @@ export const ProcessChoseCSVData = ({ getChose , setNoteCSVData }) => {
             ...item,
             noteSpeed: 0.05,
             startPosition: 3.8,
-            endPosition: 1.5,
+            endPosition: 1.2,
             lifePosition: 1,
             isActive: false,
             isJudged: false,
@@ -301,390 +331,110 @@ export const ProcessChoseCSVData = ({ getChose , setNoteCSVData }) => {
 
     loadCsv();
 
-  }, [getChose]); // 當 getChose 改變時重新執行
-};
-
-export const LogicOfNotes = ({ getMusicTimeMs , onlyNotes , setPrefect , setGood , setMiss , setCommbo , mouseXR}) => {
-  if (!onlyNotes) return null;
-  const activeNotes = onlyNotes.filter(note => !note.isJudged);
-  
-
-  return (
-    <>
-      {activeNotes.map((note, index) => {
-        // 2. 計算時間與位置
-        const requiredMs = (note.startPosition - note.endPosition) / note.noteSpeed * (1000 / 60);
-        const elapsedMs = getMusicTimeMs - (note.triggerTime - requiredMs);
-
-        // let nextNote = { ...note }; //複製一份新的物件
-
-        if (elapsedMs < 0) {
-          note.isActive = false;
-          note.notePosition = note.startPosition;
-        } else {
-          note.isActive = true;
-          const elapsedFrames = elapsedMs / (1000 / 60);
-          note.notePosition = note.startPosition - note.noteSpeed * elapsedFrames;
-        }
-
-        if (!note.isActive) return null;
-
-        // ==========================================
-        // 讓 noteLand (0~31) 轉成 0 到 360 度 (Math.PI * 2)
-        // ==========================================
-        const anglePerTrack = Math.PI / 16   ;
-        const currentAngle = note.noteLand * anglePerTrack;
-        const arcLong = anglePerTrack+0.4;
-        const halfArcLong = arcLong / 2;     
-
-        // 4. 定義環形的大小 (跟隨 notePosition 變動)
-        // innerRadius 是音符內徑，outerRadius 是外徑
-        const outerRadius = note.notePosition;
-        const innerRadius = outerRadius - 0.1;
-
-        // console.log("requiredMs:"+requiredMs," elapsedMs"+elapsedMs," getMusicTimeMs"+getMusicTimeMs,
-        //   " outerRadius"+outerRadius
-        // );
-
-        // //計算與判定線的距離
-        const getNoteCenterAngle = note.noteLand * Math.PI / 16;  //轉成度數
-        const angleDiff = Math.abs(mouseXR - getNoteCenterAngle);    //滑鼠轉換的角度與音符相差多少
-        const angleDiff_D = angleDiff * (180 / Math.PI);
-
-        if (note.isJudged == false){
-          if (note.notePosition <= note.lifePosition) {
-            note.judgeStyle = 3; 
-          } else if (note.notePosition <= note.endPosition) {
-            if(angleDiff_D  <= 7) {
-              note.judgeStyle = 1; 
-            } else if(angleDiff_D  <= 15) {
-              note.judgeStyle = 2; 
-            } 
-          }
-
-          if (note.judgeStyle > 0) {
-            note.isJudged = true;
-            note.isActive = false;
-
-            switch(note.judgeStyle) {
-            case 1:
-              PlayHitSound();
-              setPrefect((prev) => prev + 1);
-              setCommbo((prev) => prev + 1);
-              break;
-            case 2:
-              PlayHitSound();
-              setGood((prev) => prev + 1);
-              setCommbo((prev) => prev + 1);
-              break;
-            case 3:
-              setMiss((prev) => prev + 1);
-              setCommbo(0);
-              break;
-            }
-          }
-        }
-        
-        if(note.isJudged){
-          note.notePosition=0;
-        // console.log(note.isJudged + " " + getCommbo + " judgeStyle=" + note.judgeStyle + " notePos=" + note.notePosition);
-        }
-      
-        return (
-          <group key={note.id || index} rotation={[0, 0, currentAngle]}>
-            <mesh>
-              {/* 
-                ringGeometry 參數說明：
-                args: [innerRadius, outerRadius, thetaSegments, phiSegments, thetaStart, thetaLength]
-                我們用 thetaStart 和 thetaLength 來控制音符弧度的大小 (例如佔一小段角度)
-              */}
-              <ringGeometry args={[innerRadius, outerRadius, 32, 1, -halfArcLong , arcLong]} />
-              <meshStandardMaterial color='rgb(205, 205, 209)' side={2} />
-            </mesh>
-          </group>
-        );
-      })}
-    </>
-  );
-};
-
-
-export const LogicOfRotate = ({ getMusicTimeMs , onlyRotate , setPrefect , setGood , setMiss , setCommbo}) => {
-  if (!onlyRotate) return null;
-  const activeNotes = onlyRotate.filter(note => !note.isJudged);
-
-  const AngleDiff = getRotateJudgeAngle();
-
-  const now = getMusicTimeMs;
-
-
-  return (
-    <>
-      {activeNotes.map((note, index) => {
-        if (note.isJudged ) return null;
-
-        // 2. 計算時間與位置
-        const requiredMs = (note.startPosition - note.endPosition) / note.noteSpeed * (1000 / 60);
-        const elapsedMs = getMusicTimeMs - (note.triggerTime - requiredMs);
-
-        // let nextNote = { ...note }; //複製一份新的物件
-
-        if (elapsedMs < 0) {
-          note.isActive = false;
-          note.notePosition = note.startPosition;
-        } else {
-          note.isActive = true;
-          const elapsedFrames = elapsedMs / (1000 / 60);
-          note.notePosition = note.startPosition - note.noteSpeed * elapsedFrames;
-        }
-
-        if (note.notePosition <= note.lifePosition) {
-          note.isActive = false;
-          note.isJudged = true;
-          note.judgeStyle = 3;
-        }
-
-        if (!note.isActive) return null;
-
-        // 定義環形的大小 (跟隨 notePosition 變動)
-        // innerRadius 是音符內徑，outerRadius 是外徑
-        const outerRadius = note.notePosition;
-        const innerRadius = outerRadius  - 0.05;
-
-        const noteColor = note.direction === 1 ? 'red' : 'blue';
-
-
-
-
-      if (note.isJudged == false) {
-       if (note.notePosition <= note.lifePosition) { //miss
-            note.judgeStyle = 3; 
-       }else if (Math.abs(now - note.triggerTime) <= 30){   // prefect
-          if (AngleDiff === 1 && note.direction === 1 || AngleDiff === 2 && note.direction === 0) {
-            note.judgeStyle = 1;
-          }
-        }else if (now - note.triggerTime >= 50 )    // great
-        {
-          if (AngleDiff === 1 && note.direction === 1 || AngleDiff === 2 && note.direction === 0) {
-            note.judgeStyle = 1;
-          }
-        }
-
-      if (note.judgeStyle > 0) {
-            note.isJudged = true;
-            note.isActive = false;
-
-            switch(note.judgeStyle) {
-            case 1:
-              PlayHitSound();
-              setPrefect((prev) => prev + 1);
-              setCommbo((prev) => prev + 1);
-              break;
-            case 2:
-              PlayHitSound();
-              setGood((prev) => prev + 1);
-              setCommbo((prev) => prev + 1);
-              break;
-            case 3:
-              setMiss((prev) => prev + 1);
-              setCommbo(0);
-              break;
-            }
-          }
-        
-    }
-
-    if(note.isJudged){
-      note.notePosition=0;
-    }
-      
-        // if (AngleDiff === 1) {
-        //     console.log("順時針");
-        //   }
-
-        //   if (AngleDiff === 2) {
-        //     console.log("逆時針");
-        //   }
-
-        return (
-          <group key={note.id || index} >
-            <mesh>
-              {/* 
-                ringGeometry 參數說明：
-                args: [innerRadius, outerRadius, thetaSegments, phiSegments, thetaStart, thetaLength]
-                我們用 thetaStart 和 thetaLength 來控制音符弧度的大小 (例如佔一小段角度)
-              */}
-              <ringGeometry args={[innerRadius, outerRadius, 32, 1, 0 ]} />
-              <meshStandardMaterial color={noteColor} side={2} />
-            </mesh>
-          </group>
-        );
-      })}
-    </>
-  );
-};
-
-
-export const LogicOfDarg = ({ getMusicTimeMs, onlyDrag, mouseXR, setPrefect, setGood, setMiss, setCommbo }) => {
-  if (!onlyDrag) return null;
-
-  return (
-    <>
-      {onlyDrag.map((note, index) => {
-        // 如果整個 note 已經判定完畢，跳過
-        if (note.isJudged) return null;
-
-        // 計算時間與位置
-        const requiredMs = (note.startPosition - note.endPosition) / note.noteSpeed * (1000 / 60);
-        
-        // 效能優化：時間還沒到或已結束太久，跳過
-        if (getMusicTimeMs < note.triggerTimeStart - requiredMs - 2000) return null;
-        if (getMusicTimeMs > note.triggerTimeEnd + 2000) return null;
-
-        // 每個細分音符之間的平均毫秒數
-        const averageMs = (note.triggerTimeEnd - note.triggerTimeStart) / note.density; 
-       
-        // 計算拖曳總角度距離（含順逆時針修正）
-        let diff = note.noteLandEnd - note.noteLandStart;
-        if (note.direction === 1) { // 順時針
-          if (diff < 0) diff += 32;
-        } else { // 逆時針
-          if (diff > 0) diff -= 32;
-        }
-        // 每個細分音符之間的平均角度差
-        let averageAng = diff / note.density; 
-
-        // 收集要渲染的每一個區段
-        const subdivideNotes = [];
-
-        for (let i = 0; i <= note.density; i++) {
-          // 計算每個細分音符的觸發時間
-          const everyDragTriggerTime = note.triggerTimeStart + averageMs * i;
-          // 計算每個細分音符的落點角度
-          const everyDragLand = note.noteLandStart + averageAng * i;
-          // 從應該啟動的時間算起經過了多少毫秒
-          const elapsedMs = getMusicTimeMs - (everyDragTriggerTime - requiredMs);
-          
-          // 如果已經被判定過，不繪製
-          if (note.segmentStates && note.segmentStates[i] && note.segmentStates[i].isJudged) {
-            continue;
-          }
-          
-          // 每個小音符如果時間還沒到就不繪製
-          if (elapsedMs < 0) {
-            continue; 
-          }
-
-          let everyNotePosition;
-          if (elapsedMs < 0) {
-            // 還沒啟動，停在初始位置
-            everyNotePosition = note.startPosition;
-          } else {
-            // 已啟動，計算已下降的距離
-            const elapsedFrames = elapsedMs / (1000 / 60);
-            everyNotePosition = note.startPosition - note.noteSpeed * elapsedFrames;
-          }
-
-          // 生命線檢查（若超出範圍則不判定）
-          if (everyNotePosition <= note.lifePosition) {
-            if (note.segmentStates && note.segmentStates[i]) {
-              note.segmentStates[i].isJudged = true;
-              note.segmentStates[i].judgeStyle = 3;  // Miss
-              setMiss((prev) => prev + 1);
-              setCommbo(0);
-            }
-            continue; 
-          }
-
-          // 如果還沒到起始位置，不畫
-          if (everyNotePosition > note.startPosition) {
-            continue;
-          }
-
-          // ==========================================
-          // 應用 LogicOfNotes 的判定邏輯
-          // ==========================================
-          const everyNoteCenterAngle = everyDragLand * Math.PI / 16;  // 轉成弧度
-          const angleDiff = Math.abs(mouseXR - everyNoteCenterAngle);  // 角度差
-          const angleDiff_D = angleDiff * (180 / Math.PI);  // 轉成度數
-
-          let segmentJudgeStyle = 0;
-
-          if (everyNotePosition <= note.endPosition) {
-            if (angleDiff_D <= 7) {
-              segmentJudgeStyle = 1;  // Perfect
-            } else if (angleDiff_D <= 15) {
-              segmentJudgeStyle = 2;  // Good
-            }
-          }
-
-          // 記錄判定結果，如果判定過就不繪製
-          if (segmentJudgeStyle > 0) {
-            if (note.segmentStates && note.segmentStates[i]) {
-              note.segmentStates[i].isJudged = true;
-              note.segmentStates[i].judgeStyle = segmentJudgeStyle;
-
-              switch (segmentJudgeStyle) {
-                case 1:
-                  PlayHitSound();
-                  setPrefect((prev) => prev + 1);
-                  setCommbo((prev) => prev + 1);
-                  break;
-                case 2:
-                  PlayHitSound();
-                  setGood((prev) => prev + 1);
-                  setCommbo((prev) => prev + 1);
-                  break;
-              }
-            }
-            continue;  // 判定過的不繪製
-          }
-
-          // 定義環形的大小 (使用當前計算出來的 everyNotePosition)
-          const outerRadius = everyNotePosition;
-          const innerRadius = outerRadius - 0.05;
-
-          // 計算環形弧度 (將 32 等分轉為弳輻)
-          const arcWidth = Math.PI / 16 + 0.4; // 可依需求調整弧寬
-          const centerAngle = everyDragLand * ((Math.PI * 2) / 32);
-          const thetaStart = centerAngle - arcWidth / 2;
-          const thetaLength = arcWidth;
-          
-
-          subdivideNotes.push(
-            <mesh key={`seg-${i}`}>
-              {/* ringGeometry 參數：[innerRadius, outerRadius, thetaSegments, phiSegments, thetaStart, thetaLength]*/}
-              <ringGeometry args={[innerRadius, outerRadius, 32, 1, thetaStart, thetaLength]} />
-              <meshStandardMaterial side={2} emissive="rgb(205, 205, 209)" emissiveIntensity={10}/>
-            </mesh>
-          );
-        }
-
-        return (
-          <group key={note.id || index}>
-            {subdivideNotes}
-          </group>
-        );
-      })}
-    </>
-  );
+  }, [getChose]); 
 };
 
 export const PlayerMark = ({ mouseXR }) => {
-  const arcLong = (Math.PI / 16) + 0.4
+  const arcLong = (Math.PI / 16) + 0.5
   const halfArcLong = arcLong/2
   return (
     <mesh rotation={[0, 0, mouseXR]}>
-      <ringGeometry args={[1, 1.1, 32, 1, -halfArcLong, arcLong ]} />
+      <ringGeometry args={[1, 1.05, 32, 1, -halfArcLong, arcLong ]} />
       <meshStandardMaterial color="rgb(255, 236, 33)" side={2} />
     </mesh>
   );
 };
 
+export const PuaseButtom = ({ setStatus }) => {
+  return (
+    <div className="PuaseButtom">
+      <Button
+        type="text"
+        onClick={() => setStatus(2.5)}
+      >
+        Pause
+      </Button>
+    </div>
+  );
+};
+
+export const JudgeTextComponent = ({ radius = 4.2, getJudgeStatus }) => {
+  const judgeText = 
+    getJudgeStatus === 'P' ? 'PERFECT' : 
+    getJudgeStatus === 'G' ? 'GOOD' : 
+    getJudgeStatus === 'M' ? 'MISS' : null;
+
+  if (!judgeText) return null;
+
+  const chars = judgeText.split("");
+  
+  // 設定每個相鄰字元之間的固定角度間距（可依字體大小微調此數值）
+  const angleStep = 0.1; 
+
+  return (
+    <group>
+      {chars.map((char, i) => {
+        // 使用反轉後的索引來計算角度與旋轉
+        const reversedIndex = chars.length - 1 - i;
+        // 以整串文字的中心點為基準向兩側展開
+        // (i - (chars.length - 1) / 2) 可以讓奇數或偶數長度的字串都完美置中於 0 度
+        const angle = (reversedIndex - (chars.length - 1) / 2) * angleStep;
+        
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
+
+        return (
+          <Text
+            key={i}
+            position={[x, y, 0]}
+            rotation={[0, 0, angle - Math.PI / 2]}
+            fontSize={0.4}
+            color="white"
+            anchorX="center"
+            anchorY="middle"
+          >
+            {char}
+          </Text>
+        );
+      })}
+    </group>
+  );
+};
+
+export const CommboTextComponent = ({ radius = 4.2, getCommbo }) => {
 
 
+  const chars = String(getCommbo).split("");
+  
+  // 設定每個相鄰字元之間的固定角度間距（可依需求微調）
+  const angleStep = 0.1; 
 
+  return (
+    <group rotation={[0, 0, Math.PI]}>
+      {chars.map((char, i) => {
+        // 以整串文字的中心點為基準向兩側展開，個位數時 (0 - 0) * angleStep = 0，完美置中
+        const angle = (i - (chars.length - 1) / 2) * angleStep;
+        
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
 
+        return (
+          <Text
+            key={i}
+            position={[x, y, 0]}
+            rotation={[0, 0, angle - Math.PI / 2]}
+            fontSize={0.4}
+            color="white"
+            anchorX="center"
+            anchorY="middle"
+          >
+            {char}
+          </Text>
+        );
+      })}
+    </group>
+  );
+};
 
 
 

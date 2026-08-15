@@ -17,6 +17,7 @@ window.addEventListener("mousemove", (event) => {
 
 export const MouseTrackerR = () => {
   const rad = (mouseXR / window.innerWidth) * Math.PI * 2;
+  // console.log(mouseXR,rad);
   return rad;
 };
 

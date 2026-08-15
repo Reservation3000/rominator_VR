@@ -12,10 +12,12 @@
   "dependencies": {
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
+    "@react-three/postprocessing": "^3.0.5",
     "@react-three/xr": "^6.6.30",
     "@reactuses/core": "^6.5.0",
     "antd": "^6.5.1",
     "papaparse": "^5.5.4",
+    "postprocessing": "^6.39.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "three": "^0.185.1"

@@ -9,49 +9,92 @@
     transform: translate(-50%, -50%);
 }
 
-/* ------------------------------------------------------------------*/
-/* 選歌環形歌單的父層 */
-.Menu {
-  position: absolute;
-  inset: 50%;     /*上下左右50%*/
-  transform: translate(-50%, -50%);
+/*====================================================================================== */
+/* status = 0  菜單
+/*====================================================================================== */
+/* 選歌畫面的大容器 ====================================================*/
+.MenuContainer {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    background-color: black;
+    border: 5px solid red;
 }
 
-/* 旋轉定位每個 Avatar=歌曲 */
+/* 選歌環形歌單的父層 ================================================*/
+.Menu {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    transform: translate(50%, 50%);
+}
+
+/* 選歌畫面的外圓環 【定位】===========================================*/
+.roundabout-container {
+    position: absolute;
+    width: 800px;
+    height:800px;
+    aspect-ratio: 1 / 1;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+/* 選歌畫面的外圓環【旋轉】===========================================*/
+.roundabout {
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* 穿透點擊 */
+    animation: spinRoundabout 8s linear infinite;
+}
+@keyframes spinRoundabout {
+    from {
+        transform: scale(1) rotate(360deg); 
+    }
+
+    to {
+        transform:  scale(1) rotate(0deg);
+    }
+}
+
+
+/* 旋轉定位每個 Avatar=歌曲 ========================================*/
 .mgCardsWrapper {
     position: absolute;
     /* top: var(--top); */
     /* left: var(--left); */
-    top: -80px;
-    left: -80px;
+    top: -85px;
+    left: -85px;
     /*         旋轉角度             往外推開 140px 距離     保持圖片正向  */
     transform: rotate(var(--angle)) translate(250px) rotate(calc(90deg));
     /* transform:  translate(-50%, -50%) ; */
     transition: transform 0.3s ease;
 }
 
-/* 選歌表單中，每張card中央的圓形 */
+/* 選歌表單中，每張card中央的圓形 ==================================*/
 .certenCircle {
   background-color: rgba(0, 0, 0, 0.8) ;
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  border: 1px solid rgb(209, 209, 209); /* 邊框 */
+  border: 1px solid rgba(209, 209, 209, 0.429); /* 邊框 */
   pointer-events: none; /* 穿透點擊 */
 }
-/* 選歌表單中，每張card在滑鼠觸碰下card中央的圓形也放大(設定父子關係) */
+/* 選歌表單中，每張card在滑鼠觸碰下card中央的圓形也放大(設定父子關係) =*/
 .mgCardsWrapper:hover .certenCircle {
   transform: translate(-50%, -50%) scale(1.3) ; 
   transition: transform 0.5s ease; 
 }
-/*選歌表單中，每張card*/
+/*選歌表單中，每張card=============================================*/
 .mgCards{
+    border: 3px solid rgba(209, 209, 209, 0.723); /* 邊框 */
     transition: all 0.5s ease-in-out;
 }
-/*選歌表單中，每張card在滑鼠觸碰下*/
+/*選歌表單中，每張card在滑鼠觸碰下==================================*/
 .mgCards:hover {
-    animation: spin 20s linear infinite;
+    animation: spin 8s linear infinite;
     box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.3) ;
 }
 @keyframes spin {
@@ -63,22 +106,25 @@
         transform:  scale(1.3) rotate(360deg);
     }
 }
-/*選歌表單中，每張圖片*/
+/*選歌表單中，每張圖片=============================================*/
 .mgImg{
     width: 100%;
     object-fit: cover;
 }
 
-
-/*選歌後，展示的歌曲圖片*/
-.showChoseSong {
-    position: fixed;
+/* 選歌後，展示的歌曲圖片的襯圓_1 ================================*/
+.showChoseSongBack_Circle_1 {
+    position: absolute;
+    width: 520px;
+    height: 520px;
     top: 50%;
     left: 50%;
+    border-radius: 50%;
     transform: translate(-50%, -50%);
+    background-color: rgb(1, 1, 1);
 }
 
-/*選歌菜單的上下一頁按鈕*/
+/*選歌菜單的上下一頁按鈕==========================================*/
 .MenuPageSwitchBottom{
     position: fixed;
     top: 10vw;
@@ -86,4 +132,45 @@
     transform: translate(-50%, -50%);
 }
 
+
+
+/*====================================================================================== */
+/* status = 1  選歌後的過場
+/*====================================================================================== */
+/*選歌後，展示的歌曲圖片_背景==========================================*/
+.showChoseSongBack {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    background-color: black;
+}
+
+/*選歌後，展示的歌曲圖片==========================================*/
+.showChoseSong {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: black;
+}
+
+/* 選歌後，展示的歌曲圖片的襯圓_0 ================================*/
+.showChoseSongBack_Circle_0 {
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    top: 50%;
+    left: 50%;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgb(84, 85, 87);
+}
+
+/*遊玩時的暫停按鈕===============================================*/
+.PuaseButtom{
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
 /* -------------------------------------------------------------------------*/
