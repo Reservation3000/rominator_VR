@@ -116,7 +116,6 @@ export const LogicOfRotate = ({ getMusicTimeMs , onlyRotate , setPrefect , setGo
   const activeNotes = onlyRotate.filter(note => !note.isJudged);
 
   const AngleDiff = getRotateJudgeAngle();
-  console.log(AngleDiff);
 
   const now = getMusicTimeMs;
 
@@ -124,7 +123,6 @@ export const LogicOfRotate = ({ getMusicTimeMs , onlyRotate , setPrefect , setGo
   return (
     <>
       {activeNotes.map((note, index) => {
-        if (note.isJudged ) return null;
 
         // 2. 計算時間與位置
         const requiredMs = (note.startPosition - note.endPosition) / note.noteSpeed * (1000 / 60);
@@ -141,11 +139,6 @@ export const LogicOfRotate = ({ getMusicTimeMs , onlyRotate , setPrefect , setGo
           note.notePosition = note.startPosition - note.noteSpeed * elapsedFrames;
         }
 
-        if (note.notePosition <= note.lifePosition) {
-          note.isActive = false;
-          note.isJudged = true;
-          note.judgeStyle = 3;
-        }
 
         if (!note.isActive) return null;
 
@@ -173,6 +166,7 @@ export const LogicOfRotate = ({ getMusicTimeMs , onlyRotate , setPrefect , setGo
           }
         }
 
+
       if (note.judgeStyle > 0) {
             note.isJudged = true;
             note.isActive = false;
@@ -193,24 +187,13 @@ export const LogicOfRotate = ({ getMusicTimeMs , onlyRotate , setPrefect , setGo
             case 3:
               setMiss((prev) => prev + 1);
               setCommbo(0);
-              setJudgeStatus('Ms');
+              setJudgeStatus('M');
               break;
             }
           }
         
     }
 
-    if(note.isJudged){
-      note.notePosition=0;
-    }
-      
-        // if (AngleDiff === 1) {
-        //     console.log("順時針");
-        //   }
-
-        //   if (AngleDiff === 2) {
-        //     console.log("逆時針");
-        //   }
 
         return (
           <group key={note.id || index} >
@@ -243,8 +226,8 @@ export const LogicOfDarg = ({ getMusicTimeMs, onlyDrag, mouseXR, setPrefect, set
         const requiredMs = (note.startPosition - note.endPosition) / note.noteSpeed * (1000 / 60);
         
         // 效能優化：時間還沒到或已結束太久，跳過
-        if (getMusicTimeMs < note.triggerTimeStart - requiredMs - 2000) return null;
-        if (getMusicTimeMs > note.triggerTimeEnd + 2000) return null;
+        if (getMusicTimeMs < note.triggerTimeStart - requiredMs - 5000) return null;
+        if (getMusicTimeMs > note.triggerTimeEnd + 5000) return null;
 
         // 每個細分音符之間的平均毫秒數
         const averageMs = (note.triggerTimeEnd - note.triggerTimeStart) / note.density; 
@@ -262,7 +245,7 @@ export const LogicOfDarg = ({ getMusicTimeMs, onlyDrag, mouseXR, setPrefect, set
         // 收集要渲染的每一個區段
         const subdivideNotes = [];
 
-        for (let i = 0; i <= note.density; i++) {
+for (let i = 0; i <= note.density; i++) {
           // 計算每個細分音符的觸發時間
           const everyDragTriggerTime = note.triggerTimeStart + averageMs * i;
           // 計算每個細分音符的落點角度
@@ -275,77 +258,80 @@ export const LogicOfDarg = ({ getMusicTimeMs, onlyDrag, mouseXR, setPrefect, set
             continue;
           }
           
+          let everyNotePosition; // 每個細分音符的當前位置
+
           // 每個小音符如果時間還沒到就不繪製
           if (elapsedMs < 0) {
             continue; 
-          }
-
-          let everyNotePosition;
-          if (elapsedMs < 0) {
-            // 還沒啟動，停在初始位置
-            everyNotePosition = note.startPosition;
-          } else {
-            // 已啟動，計算已下降的距離
-            const elapsedFrames = elapsedMs / (1000 / 60);
+          }else {
+            const elapsedFrames = elapsedMs / (1000 / 60);  //計算已下降的距離
             everyNotePosition = note.startPosition - note.noteSpeed * elapsedFrames;
           }
 
-          // 生命線檢查（若超出範圍則不判定）
-          if (everyNotePosition <= note.lifePosition) {
-            if (note.segmentStates && note.segmentStates[i]) {
-              note.segmentStates[i].isJudged = true;
-              note.segmentStates[i].judgeStyle = 3;  // Miss
-              setMiss((prev) => prev + 1);
-              setCommbo(0);
-            }
-            continue; 
-          }
-
-          // 如果還沒到起始位置，不畫
+          
+          // 如果還沒到起始位置（還沒出現在畫面上），直接跳過不畫
           if (everyNotePosition > note.startPosition) {
             continue;
           }
 
-          // ==========================================
-          // 應用 LogicOfNotes 的判定邏輯
-          // ==========================================
-          const everyNoteCenterAngle = everyDragLand * Math.PI / 16;  // 轉成弧度
-          const angleDiff = Math.abs(mouseXR - everyNoteCenterAngle);  // 角度差
-          const angleDiff_D = angleDiff * (180 / Math.PI);  // 轉成度數
+          const segState = note.segmentStates && note.segmentStates[i];
+          let segmentJudgeStyle = 0; // 0: 未判定(需繪製), 1: Perfect, 2: Good, 3: Miss
 
-          let segmentJudgeStyle = 0;
 
-          if (everyNotePosition <= note.endPosition) {
+          if (everyNotePosition <= note.lifePosition) {
+            segmentJudgeStyle = 3; 
+          } else if (everyNotePosition <= note.endPosition) {
+            const everyNoteCenterAngle = everyDragLand * (Math.PI / 16);
+            let angleDiff = Math.abs(mouseXR - everyNoteCenterAngle) % (Math.PI * 2);
+            const angleDiff_D = angleDiff * (180 / Math.PI);
+
             if (angleDiff_D <= 10) {
-              segmentJudgeStyle = 1;  // Perfect
+              segmentJudgeStyle = 1; // Perfect
             } else if (angleDiff_D <= 20) {
-              segmentJudgeStyle = 2;  // Good
+              segmentJudgeStyle = 2; // Good
             }
           }
 
-          // 記錄判定結果，如果判定過就不繪製
+          // ==========================================
+          // 3. 根據狀態執行計分，並決定是否繼續繪製
+          // ==========================================
           if (segmentJudgeStyle > 0) {
-            if (note.segmentStates && note.segmentStates[i]) {
-              note.segmentStates[i].isJudged = true;
-              note.segmentStates[i].judgeStyle = segmentJudgeStyle;
-
-              switch (segmentJudgeStyle) {
-                case 1:
-                  PlayHitSound();
-                  setPrefect((prev) => prev + 1);
-                  setCommbo((prev) => prev + 1);
-                  setJudgeStatus('P');
-                  break;
-                case 2:
-                  PlayHitSound();
-                  setGood((prev) => prev + 1);
-                  setCommbo((prev) => prev + 1);
-                  setJudgeStatus('G');
-                  break;
-              }
+            // 更新該音符的內部狀態
+            if (segState) {
+              segState.isActive = false; 
+              segState.isJudged = true;
+              segState.judgeStyle = segmentJudgeStyle;
             }
-            continue;  // 判定過的不繪製
+
+            // 透過 switch 處理各種結果的 UI 與音效更新
+            switch (segmentJudgeStyle) {
+              case 1: // Perfect
+                PlayHitSound();
+                setPrefect((prev) => prev + 1);
+                setCommbo((prev) => prev + 1);
+                setJudgeStatus('P');
+                break;
+
+              case 2: // Good
+                PlayHitSound();
+                setGood((prev) => prev + 1);
+                setCommbo((prev) => prev + 1);
+                setJudgeStatus('G');
+                break;
+
+              case 3: // Miss
+                setMiss((prev) => prev + 1);
+                setCommbo(0);
+                setJudgeStatus('M');
+                break;
+            }
+            continue; 
           }
+
+// ==========================================
+// 4. 下方繼續原本的 mesh 繪製邏輯 ...
+// ==========================================
+// 定義環形的大小 ...
 
           // 定義環形的大小 (使用當前計算出來的 everyNotePosition)
           const outerRadius = everyNotePosition;

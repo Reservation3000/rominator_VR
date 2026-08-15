@@ -9,7 +9,6 @@ import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import "./App.css";
 
 import {
-  CameraControler,
   Box , 
   Roundabout,
   MenuComponent,
@@ -19,7 +18,6 @@ import {
   ProcessChoseCSVData,
   GameMusicComponent,
   PlayerMark,
-  PuaseButtom,
   JudgeTextComponent,
   CommboTextComponent 
 } from "./component.jsx";
@@ -123,12 +121,11 @@ function App() {
         
         {/*把getChose的樂曲資料，抓csv資料並做分類處裡，並丟進setNoteData */}
         <ProcessChoseCSVData  getChose={getChose} setNoteCSVData={setNoteCSVData}/>
-        <PuaseButtom setStatus={setStatus}/>
+        
         
          <main className = "canva">
             <Canvas gl={{ toneMappingExposure: 1 }}>
               {/* <directionalLight position={[0, 0, 2]} /> */}
-              <CameraControler mouseXR={mouseXR}/>
 
               <GizmoHelper alignment="bottom-right" margin={[80, 80]}>
                 <GizmoViewport axisColors={['#ff3653', '#009b00', '#0070ff']} labelColor="white" />

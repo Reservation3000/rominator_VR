@@ -10,32 +10,9 @@ import { useFrame } from '@react-three/fiber';
 import { PerspectiveCamera } from '@react-three/drei';
 
 
-export const CameraControler = ({ mouseXR }) => {
-  const cameraRef = useRef();
-
-};
-
-export const Box = ({ position, getJudgeStatus }) => {
-  const color = getJudgeStatus === 'M' ? 'red' : 'white';
-  const colorBloomValue = getJudgeStatus === 'M' ? 3 : 0.5;
-
-  return (
-    <group position={position}>
-      {/* 圓形 Mesh */}
-      <mesh>
-        <circleGeometry args={[0.95, 32]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={colorBloomValue-0.2} />
-      </mesh>
-
-      {/* 環形 Mesh */}
-      <mesh>
-        <ringGeometry args={[3.9, 3.93, 60, 1]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={colorBloomValue} />
-      </mesh>
-    </group>
-  );
-};
-
+//==========================================================================================
+// Menu 0===================================================================================
+//==========================================================================================
 export const Roundabout =() =>{
   return(
     <div className="roundabout-container">
@@ -48,48 +25,6 @@ export const Roundabout =() =>{
          {/* 短弧相反側 */}
         <path d="M 53.75 7.16 A 43 43 0 0 1 77.64 17.06" fill="none" stroke="white" strokeWidth="0.1" transform="rotate(180 50 50)"/>
       </svg>
-    </div>
-  );
-}
-
-export const GameMusicComponent = ({ getChose, setMusicTimeMs , setStatus}) => {
-  const musicChose = useRef(null);
-
-  useEffect(() => {
-    if (!musicChose.current) return;
-
-    let rafId;
-
-    const tick = () => {
-      if (musicChose.current) {
-        const now = musicChose.current.currentTime * 1000;
-        setMusicTimeMs(now);
-      }
-
-      rafId = requestAnimationFrame(tick);
-    };
-
-    rafId = requestAnimationFrame(tick);
-
-    return () => cancelAnimationFrame(rafId);
-  }, [getChose, setMusicTimeMs]);
-
-  if (!getChose.mp3) return null;
-
-  return (
-    <audio style={{ top: '50px', position: 'relative' }}
-      ref={musicChose}
-      src={getChose.mp3}
-      autoPlay
-      onEnded={() => setStatus(0)} //回到選歌介面
-    />
-  );
-}
-
-export const SliderComponent = ({setVal}) => {
-  return (
-    <div className="slider">
-      <Slider defaultValue={1} min={0.35} max={1} step={0.01} onChange={(v) => setVal(v)}/>
     </div>
   );
 }
@@ -207,34 +142,10 @@ export const MenuMusicComponent = ({ getTouch , getChose}) => {
   );
 };
 
-export const ShowChoseSong = ({ getChose , setStatus}) => {
-  const [getTime, setTime] = useState(1);  // 3秒
 
-  useEffect(() => {
-    let interval = null;   //interval=間隔
-    
-    if (getTime > 0) {
-      interval = setInterval(() => {
-        setTime((millisSeconds) => millisSeconds - 1);
-      }, 1000);
-    } else if (getTime === 0) {
-      setStatus(2);
-    }
-
-    // 清除計時器
-    return () => clearInterval(interval);
-  }, [getTime]);
-
-  return (
-    <div className="showChoseSongBack">
-      <div className="showChoseSong">
-        <div class="showChoseSongBack_Circle_0"></div>
-        <div class="showChoseSongBack_Circle_1"></div>
-        <Avatar size={500} src={getChose.img} />
-      </div>
-    </div>
-  );
-};
+//==========================================================================================
+//過場 1====================================================================================
+//==========================================================================================
 
 /* 把getChose的樂曲資料，抓csv資料並做分類處裡，並丟進setNoteCSVData */
 export const ProcessChoseCSVData = ({ getChose , setNoteCSVData }) => {
@@ -334,25 +245,135 @@ export const ProcessChoseCSVData = ({ getChose , setNoteCSVData }) => {
   }, [getChose]); 
 };
 
+export const ShowChoseSong = ({ getChose , setStatus}) => {
+  const [getTime, setTime] = useState(5);  // 3秒
+
+  useEffect(() => {
+    let interval = null;   //interval=間隔
+    
+    if (getTime > 0) {
+      interval = setInterval(() => {
+        setTime((millisSeconds) => millisSeconds - 1);
+      }, 1000);
+    } else if (getTime === 0) {
+      setStatus(2);
+    }
+
+    // 清除計時器
+    return () => clearInterval(interval);
+  }, [getTime]);
+
+  return (
+    <div className="showChoseSongBack">
+      <div className="showChoseSong">
+        <div class="showChoseSongBack_Circle_0"></div>
+        <div class="showChoseSongBack_Circle_1"></div>
+        <Avatar size={500} src={getChose.img} />
+
+      </div>
+    </div>
+  );
+};
+
+
+
+//==========================================================================================
+//遊玩 2====================================================================================
+//==========================================================================================
+export const Box = ({ position, getJudgeStatus }) => {
+  const color = getJudgeStatus === 'M' ? 'red' : 'white';
+  const colorBloomValue = getJudgeStatus === 'M' ? 3 : 0.5;
+
+  return (
+    <group position={position}>
+      {/* 圓形 Mesh */}
+      <mesh>
+        <circleGeometry args={[0.95, 32]} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={colorBloomValue-0.2} />
+      </mesh>
+
+      {/* 環形 Mesh */}
+      <mesh>
+        <ringGeometry args={[3.9, 3.93, 60, 1]} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={colorBloomValue} />
+      </mesh>
+    </group>
+  );
+};
+
+export const GameMusicComponent = ({ getChose, setMusicTimeMs, setStatus }) => {
+  const musicChose = useRef(null);
+  const [getPlay, setPlay] = useState(true); // true => 進來就自動播放，
+
+  // 根據 getplay 的改變來控制播放與暫停
+useEffect(() => {
+    if (!musicChose.current) return;
+
+    if (getPlay) {
+      musicChose.current.play();
+    } else {
+      musicChose.current.pause();
+    }
+  }, [getPlay]);
+
+  // 處理時間同步
+  useEffect(() => {
+    if (!musicChose.current) return;
+
+    let rafId;
+
+    const tick = () => {
+      // 只有在播放狀態（且音樂不是暫停中）才更新時間，優化效能
+      if (musicChose.current && !musicChose.current.paused) {
+        const now = musicChose.current.currentTime * 1000;
+        setMusicTimeMs(now);
+      }
+
+      rafId = requestAnimationFrame(tick);
+    };
+
+    rafId = requestAnimationFrame(tick);
+
+    return () => cancelAnimationFrame(rafId);
+  }, [setMusicTimeMs]); // 移除不必要的 getChose 依賴，避免重複註冊
+
+  if (!getChose.mp3) return null;
+
+  return (
+    <>
+      <audio 
+        style={{ top: '50px', position: 'relative' }}
+        ref={musicChose}
+        src={getChose.mp3}
+        autoPlay
+        onPlay={() => setPlay(true)}   // 確保 DOM 實際播放時，state 是 true
+        onPause={() => setPlay(false)} // 確保 DOM 實際暫停時，state 是 false
+        onEnded={() => setStatus(0)}   // 回到選歌介面
+      />
+      <PuaseButtom getPlay={getPlay} setPlay={setPlay} />
+    </>
+  );
+}
+
 export const PlayerMark = ({ mouseXR }) => {
   const arcLong = (Math.PI / 16) + 0.5
   const halfArcLong = arcLong/2
   return (
     <mesh rotation={[0, 0, mouseXR]}>
       <ringGeometry args={[1, 1.05, 32, 1, -halfArcLong, arcLong ]} />
-      <meshStandardMaterial color="rgb(255, 236, 33)" side={2} />
+      <meshStandardMaterial color={"rgb(255, 236, 33)"} emissive={"rgb(255, 236, 33)"} emissiveIntensity={3} side={2} />
     </mesh>
   );
 };
 
-export const PuaseButtom = ({ setStatus }) => {
+const PuaseButtom = ({ getPlay, setPlay }) => {
   return (
-    <div className="PuaseButtom">
+    <div className="puaseButtom">
       <Button
         type="text"
-        onClick={() => setStatus(2.5)}
+        onClick={() => setPlay(prev => !prev)}
       >
-        Pause
+        {getPlay ? 'Pause' : 'Play'} {/* 讓按鈕文字隨狀態動態改變，方便辨識 */}
       </Button>
     </div>
   );
@@ -363,6 +384,8 @@ export const JudgeTextComponent = ({ radius = 4.2, getJudgeStatus }) => {
     getJudgeStatus === 'P' ? 'PERFECT' : 
     getJudgeStatus === 'G' ? 'GOOD' : 
     getJudgeStatus === 'M' ? 'MISS' : null;
+
+  const color = getJudgeStatus === 'M' ? 'red' : 'white';
 
   if (!judgeText) return null;
 
@@ -389,7 +412,7 @@ export const JudgeTextComponent = ({ radius = 4.2, getJudgeStatus }) => {
             position={[x, y, 0]}
             rotation={[0, 0, angle - Math.PI / 2]}
             fontSize={0.4}
-            color="white"
+            color={color}
             anchorX="center"
             anchorY="middle"
           >
@@ -435,6 +458,27 @@ export const CommboTextComponent = ({ radius = 4.2, getCommbo }) => {
     </group>
   );
 };
+  
+
+
+//==========================================================================================
+//fix component=============================================================================
+//==========================================================================================
+
+export const SliderComponent = ({setVal}) => {
+  return (
+    <div className="slider">
+      <Slider defaultValue={1} min={0.35} max={1} step={0.01} onChange={(v) => setVal(v)}/>
+    </div>
+  );
+}
+
+
+
+
+
+
+
 
 
 

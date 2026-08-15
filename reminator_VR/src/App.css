@@ -4,6 +4,11 @@
     height: 100%;
     background-color: black;
     position: absolute;
+}
+
+/*遊玩時的暫停按鈕===============================================*/
+.puaseButtom{
+    position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
@@ -152,6 +157,7 @@
     left: 50%;
     transform: translate(-50%, -50%);
     background-color: black;
+    animation: showChoseSong 0.3s ease-out normal forwards;
 }
 
 /* 選歌後，展示的歌曲圖片的襯圓_0 ================================*/
@@ -166,11 +172,16 @@
     background-color: rgb(84, 85, 87);
 }
 
-/*遊玩時的暫停按鈕===============================================*/
-.PuaseButtom{
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+@keyframes showChoseSong {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0) ;
+    }
+
+    100% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1) ;
+    }
 }
+
 /* -------------------------------------------------------------------------*/
