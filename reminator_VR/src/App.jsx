@@ -14,6 +14,7 @@ import {
   MenuComponent,
   MenuMusicComponent,
   ShowChoseSong,
+  BackImg,
   MenuPageSwitchBottom,
   ProcessChoseCSVData,
   GameMusicComponent,
@@ -58,6 +59,7 @@ function App() {
   const [getGood, setGood] = useState(0);
   const [getMiss, setMiss] = useState(0);
   const [getJudgeStatus, setJudgeStatus] = useState(null); //判定狀態
+  const [getTotalCombo, setTotalCombo] = useState(0); //總共連擊數
 
 
   const getOnTimeUpdate = (timeInSeconds) => {
@@ -133,12 +135,14 @@ function App() {
               < OrbitControls/>
               <ambientLight intensity={2} />
 
+              <BackImg radius={3.93} getChose={getChose}/>
               <LogicOfNotes getMusicTimeMs={getMusicTimeMs} 
                             onlyNotes={onlyNotes}
                             setPrefect={setPrefect} 
                             setGood={setGood} 
                             setMiss={setMiss} 
                             setCommbo={setCommbo}
+                            setTotalCombo={setTotalCombo}
                             getCommbo={getCommbo}
                             setJudgeStatus={setJudgeStatus}
                             mouseXR={mouseXR}
@@ -149,6 +153,7 @@ function App() {
                               setGood={setGood}
                               setMiss={setMiss}
                               setCommbo={setCommbo}
+                              setTotalCombo={setTotalCombo}
                               setJudgeStatus={setJudgeStatus}
               />
               <LogicOfDarg  getMusicTimeMs={getMusicTimeMs} 
@@ -158,12 +163,13 @@ function App() {
                             setGood={setGood}
                             setMiss={setMiss}
                             setCommbo={setCommbo}
+                            setTotalCombo={setTotalCombo}
                             setJudgeStatus={setJudgeStatus}
               />
               <PlayerMark mouseXR={mouseXR}/>
-              <Box position={[0, 0, 0]} getJudgeStatus={getJudgeStatus}/>
-              <JudgeTextComponent getJudgeStatus={getJudgeStatus}/>
-              <CommboTextComponent getCommbo={getCommbo}/>
+              <Box position={[0, 0, 0]} key={`box-${getTotalCombo}`} getJudgeStatus={getJudgeStatus} getTotalCombo={getTotalCombo}/>
+              <JudgeTextComponent key={`judge-${getTotalCombo}`} getJudgeStatus={getJudgeStatus} getTotalCombo={getTotalCombo}/>
+              <CommboTextComponent key={`combo-${getTotalCombo}`} getCommbo={getCommbo} getTotalCombo={getTotalCombo}/>
 
               {/* react-three/postprocessing 特效處理 */}
               <EffectComposer>

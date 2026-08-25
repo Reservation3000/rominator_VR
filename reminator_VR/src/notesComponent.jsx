@@ -4,7 +4,7 @@ import {  getRotateJudgeAngle,
 
 
 
-export const LogicOfNotes = ({ getMusicTimeMs , onlyNotes , setPrefect , setGood , setMiss , setCommbo , setJudgeStatus , mouseXR}) => {
+export const LogicOfNotes = ({ getMusicTimeMs , onlyNotes , setPrefect , setGood , setMiss , setCommbo , setTotalCombo , setJudgeStatus , mouseXR}) => {
   if (!onlyNotes) return null;
   const activeNotes = onlyNotes.filter(note => !note.isJudged);
   
@@ -71,16 +71,19 @@ export const LogicOfNotes = ({ getMusicTimeMs , onlyNotes , setPrefect , setGood
               PlayHitSound();
               setPrefect((prev) => prev + 1);
               setCommbo((prev) => prev + 1);
+              setTotalCombo((prev) => prev + 1);
               setJudgeStatus('P');
               break;
             case 2:
               PlayHitSound();
               setGood((prev) => prev + 1);
               setCommbo((prev) => prev + 1);
+              setTotalCombo((prev) => prev + 1);
               setJudgeStatus('G');
               break;
             case 3:
               setMiss((prev) => prev + 1);
+              setTotalCombo((prev) => prev + 1);
               setCommbo(0);
               setJudgeStatus('M');
               break;
@@ -111,7 +114,7 @@ export const LogicOfNotes = ({ getMusicTimeMs , onlyNotes , setPrefect , setGood
   );
 };
 
-export const LogicOfRotate = ({ getMusicTimeMs , onlyRotate , setPrefect , setGood , setMiss , setCommbo , setJudgeStatus}) => {
+export const LogicOfRotate = ({ getMusicTimeMs , onlyRotate , setPrefect , setGood , setMiss , setCommbo , setTotalCombo , setJudgeStatus}) => {
   if (!onlyRotate) return null;
   const activeNotes = onlyRotate.filter(note => !note.isJudged);
 
@@ -176,16 +179,19 @@ export const LogicOfRotate = ({ getMusicTimeMs , onlyRotate , setPrefect , setGo
               PlayHitSound();
               setPrefect((prev) => prev + 1);
               setCommbo((prev) => prev + 1);
+              setTotalCombo((prev) => prev + 1);
               setJudgeStatus('P');
               break;
             case 2:
               PlayHitSound();
               setGood((prev) => prev + 1);
               setCommbo((prev) => prev + 1);
+              setTotalCombo((prev) => prev + 1);
               setJudgeStatus('G');
               break;
             case 3:
               setMiss((prev) => prev + 1);
+              setTotalCombo((prev) => prev + 1);
               setCommbo(0);
               setJudgeStatus('M');
               break;
@@ -213,7 +219,7 @@ export const LogicOfRotate = ({ getMusicTimeMs , onlyRotate , setPrefect , setGo
   );
 };
 
-export const LogicOfDarg = ({ getMusicTimeMs, onlyDrag, mouseXR, setPrefect, setGood, setMiss, setCommbo , setJudgeStatus}) => {
+export const LogicOfDarg = ({ getMusicTimeMs, onlyDrag, mouseXR, setPrefect, setGood, setMiss, setCommbo , setTotalCombo ,setJudgeStatus}) => {
   if (!onlyDrag) return null;
 
   return (
@@ -309,6 +315,7 @@ for (let i = 0; i <= note.density; i++) {
                 PlayHitSound();
                 setPrefect((prev) => prev + 1);
                 setCommbo((prev) => prev + 1);
+                setTotalCombo((prev) => prev + 1);
                 setJudgeStatus('P');
                 break;
 
@@ -316,11 +323,13 @@ for (let i = 0; i <= note.density; i++) {
                 PlayHitSound();
                 setGood((prev) => prev + 1);
                 setCommbo((prev) => prev + 1);
+                setTotalCombo((prev) => prev + 1);
                 setJudgeStatus('G');
                 break;
 
               case 3: // Miss
                 setMiss((prev) => prev + 1);
+                setTotalCombo((prev) => prev + 1);
                 setCommbo(0);
                 setJudgeStatus('M');
                 break;

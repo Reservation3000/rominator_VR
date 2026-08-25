@@ -7,8 +7,19 @@ import { useMouse } from "@reactuses/core";
 import  Papa  from  'papaparse' ;
 import { Text } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
+import * as THREE from 'three';
 import { PerspectiveCamera } from '@react-three/drei';
+import {  CaretRightFilled,
+          CaretLeftFilled 
+} from '@ant-design/icons';
 
+import { 
+   useFadeOut 
+}from './hooks/hooks.jsx'; 
+
+import {
+  imageProxyURL
+} from "./constants.js";
 
 //==========================================================================================
 // Menu 0===================================================================================
@@ -71,7 +82,6 @@ export const MenuComponent = ({getsongs , setTouch , setChose , setStatus , getP
                   size={160}
                   title={ID.name} 
                   variant="borderless"
-                  hoverable
                   src={ID.img}
                   onMouseEnter={() => setTouch(ID)}  //滑鼠摸到
                   onClick={() => {                   //滑鼠點擊
@@ -84,7 +94,6 @@ export const MenuComponent = ({getsongs , setTouch , setChose , setStatus , getP
                   size={30}
                   title={ID.name} 
                   variant="borderless"
-                  hoverable
             />
 
           </div>
@@ -94,25 +103,29 @@ export const MenuComponent = ({getsongs , setTouch , setChose , setStatus , getP
 }
 
 export const MenuPageSwitchBottom = ({ setPage , getPage , pageTotal }) => {
-  return (
-    <div className="MenuPageSwitchBottom">=
-        {/* 上一頁按鈕 */}
-        {/* getPage 從第0開始，但頁數從1開始 */}
-        <Button 
-          disabled={getPage  <= 0}
-          onClick={() => setPage(prev => prev - 1)}
-        >
-          Last Page
-        </Button>
 
-        {/* 下一頁按鈕 */}
-        <Button 
-          disabled={(getPage+1) == pageTotal}
-          onClick={() => setPage(prev => prev + 1)}
-        >
-          Next Page
-        </Button>
-    </div>
+  const isFirstPage = getPage <= 0;
+  const isLastPage = (getPage + 1) >= pageTotal;
+
+  return (
+    <>
+      <div className="MenuPageSwitchBottomLeft">
+          {/* 上一頁按鈕 */}
+          {/* getPage 從第0開始，但頁數從1開始 */}
+          <CaretLeftFilled 
+            disabled={getPage  <= 0}
+            onClick={() => {if (!isFirstPage) setPage(prev => prev - 1);}}
+          />
+      </div>
+
+      <div className="MenuPageSwitchBottomRight">
+          {/* 下一頁按鈕 */}
+          <CaretRightFilled
+            disabled={(getPage+1) == pageTotal}
+            onClick={() => {if (!isLastPage) setPage(prev => prev + 1);}}
+          />
+      </div>
+    </>
   );
 }
 
@@ -246,7 +259,7 @@ export const ProcessChoseCSVData = ({ getChose , setNoteCSVData }) => {
 };
 
 export const ShowChoseSong = ({ getChose , setStatus}) => {
-  const [getTime, setTime] = useState(5);  // 3秒
+  const [getTime, setTime] = useState(5); 
 
   useEffect(() => {
     let interval = null;   //interval=間隔
@@ -265,11 +278,14 @@ export const ShowChoseSong = ({ getChose , setStatus}) => {
 
   return (
     <div className="showChoseSongBack">
-      <div className="showChoseSong">
-        <div class="showChoseSongBack_Circle_0"></div>
-        <div class="showChoseSongBack_Circle_1"></div>
-        <Avatar size={500} src={getChose.img} />
-
+      <div className='showChoseSongEdge'>
+        <div className='showChoseSongNameTop'>{getChose.name}</div>
+        <div className='showChoseSongNameBottom'>{getChose.name}</div>
+        <div className="showChoseSong">
+          <div className="showChoseSongBack_Circle_0"></div>
+          <div className="showChoseSongBack_Circle_1"></div>
+          <Avatar size={500} src={getChose.img} />
+        </div>
       </div>
     </div>
   );
@@ -280,22 +296,28 @@ export const ShowChoseSong = ({ getChose , setStatus}) => {
 //==========================================================================================
 //遊玩 2====================================================================================
 //==========================================================================================
-export const Box = ({ position, getJudgeStatus }) => {
+export const Box = ({ position, getJudgeStatus , getTotalCombo}) => {
   const color = getJudgeStatus === 'M' ? 'red' : 'white';
   const colorBloomValue = getJudgeStatus === 'M' ? 3 : 0.5;
+  const transparency = useFadeOut(getTotalCombo);
 
   return (
     <group position={position}>
       {/* 圓形 Mesh */}
       <mesh>
         <circleGeometry args={[0.95, 32]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={colorBloomValue-0.2} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={colorBloomValue-0.2} transparent={true} opacity={transparency}/>
       </mesh>
 
       {/* 環形 Mesh */}
       <mesh>
-        <ringGeometry args={[3.9, 3.93, 60, 1]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={colorBloomValue} />
+        <ringGeometry args={[3.9, 3.93, 64, 1]} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={colorBloomValue} transparent={true} opacity={transparency}/>
+      </mesh>
+
+      <mesh>
+        <ringGeometry args={[0.955, 0.96, 64]} />
+        <meshStandardMaterial color="rgb(107, 107, 107)" transparent={true} />
       </mesh>
     </group>
   );
@@ -379,13 +401,14 @@ const PuaseButtom = ({ getPlay, setPlay }) => {
   );
 };
 
-export const JudgeTextComponent = ({ radius = 4.2, getJudgeStatus }) => {
+export const JudgeTextComponent = ({ radius = 4.2, getJudgeStatus , getTotalCombo}) => {
   const judgeText = 
     getJudgeStatus === 'P' ? 'PERFECT' : 
     getJudgeStatus === 'G' ? 'GOOD' : 
     getJudgeStatus === 'M' ? 'MISS' : null;
 
   const color = getJudgeStatus === 'M' ? 'red' : 'white';
+  const transparency = useFadeOut(getTotalCombo);
 
   if (!judgeText) return null;
 
@@ -408,13 +431,14 @@ export const JudgeTextComponent = ({ radius = 4.2, getJudgeStatus }) => {
 
         return (
           <Text
-            key={i}
+            key={`${char}-${i}`}
             position={[x, y, 0]}
             rotation={[0, 0, angle - Math.PI / 2]}
             fontSize={0.4}
             color={color}
             anchorX="center"
             anchorY="middle"
+            fillOpacity={transparency}
           >
             {char}
           </Text>
@@ -424,10 +448,10 @@ export const JudgeTextComponent = ({ radius = 4.2, getJudgeStatus }) => {
   );
 };
 
-export const CommboTextComponent = ({ radius = 4.2, getCommbo }) => {
-
+export const CommboTextComponent = ({ radius = 4.2, getCommbo , getTotalCombo}) => {
 
   const chars = String(getCommbo).split("");
+  const transparency = useFadeOut(getTotalCombo);
   
   // 設定每個相鄰字元之間的固定角度間距（可依需求微調）
   const angleStep = 0.1; 
@@ -435,8 +459,10 @@ export const CommboTextComponent = ({ radius = 4.2, getCommbo }) => {
   return (
     <group rotation={[0, 0, Math.PI]}>
       {chars.map((char, i) => {
-        // 以整串文字的中心點為基準向兩側展開，個位數時 (0 - 0) * angleStep = 0，完美置中
-        const angle = (i - (chars.length - 1) / 2) * angleStep;
+        // group 有額外旋轉 Math.PI，因此這裡用反轉索引避免位數左右顛倒
+        const reversedIndex = chars.length - 1 - i;
+        // 以整串文字的中心點為基準向兩側展開，個位數時會維持置中
+        const angle = (reversedIndex - (chars.length - 1) / 2) * angleStep;
         
         const x = Math.cos(angle) * radius;
         const y = Math.sin(angle) * radius;
@@ -450,6 +476,7 @@ export const CommboTextComponent = ({ radius = 4.2, getCommbo }) => {
             color="white"
             anchorX="center"
             anchorY="middle"
+            fillOpacity={transparency}
           >
             {char}
           </Text>
@@ -459,6 +486,54 @@ export const CommboTextComponent = ({ radius = 4.2, getCommbo }) => {
   );
 };
   
+export const BackImg = ({ radius, getChose }) => {
+  const [texture, setTexture] = useState(null);
+  const proxyImageUrl = getChose?.img
+    ? `${imageProxyURL}?url=${encodeURIComponent(getChose.img)}`
+    : null;
+
+    // 1. 建立一個指向 mesh 的 ref
+  const meshRef = useRef();
+
+  // 2. 使用 useFrame 讓它每一幀都在旋轉
+  useFrame((state, delta) => {
+    if (meshRef.current) {
+      meshRef.current.rotation.z += delta * 0.5; // 數值越大轉越快
+    }
+  });
+
+  useEffect(() => {
+    if (!proxyImageUrl) return;
+
+    let isCancelled = false;
+    const loader = new THREE.TextureLoader();
+
+    loader.load( proxyImageUrl,(loadedTexture) => {
+        if (isCancelled) return;
+        loadedTexture.colorSpace = THREE.SRGBColorSpace;
+        setTexture(loadedTexture);
+      },undefined,(error) => {
+        if (isCancelled) return;
+        console.warn('BackImg texture load failed:', proxyImageUrl, error);
+        setTexture(null);
+      }
+    );
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [proxyImageUrl]);
+
+  return (
+      <mesh ref={meshRef} position={[0, 0, -0.1]}> 
+        <circleGeometry args={[radius, 32]} /> 
+        <meshBasicMaterial
+          map={texture || null}
+          color={texture ? '#272727' : '#111111'} 
+        />
+      </mesh>
+    );
+}
 
 
 //==========================================================================================

@@ -37,6 +37,45 @@ app.get("/api/VRmgDB/data", (req, res) => {
     });
 });
 
+
+// ========================================================================= 
+// 抓取圖片的代理路由=========================================================
+// =========================================================================
+app.get('/api/proxy/image', async (req, res) => {
+
+    const imageUrl = req.query.url;
+
+    // 如果沒有URL或URL不是字串，回傳400錯誤
+    if (!imageUrl || typeof imageUrl !== 'string') {
+      return res.status(400).json({ error: 'Missing url' });
+    }
+
+    let target = new URL(imageUrl); // 將字串轉換為URL物件
+
+    // 強制規定目標網址的協定必須是 https:，且主機名稱（hostname）必須是 mg.reservationfurry.art
+    if (target.protocol !== 'https:' || target.hostname !== 'mg.reservationfurry.art') {
+      return res.status(403).json({ error: 'Host not allowed' });
+    }
+
+    try {
+      const upstream = await fetch(target.toString());
+      if (!upstream.ok) {
+        return res.status(upstream.status).json({ error: 'Upstream failed' });
+      }
+
+      const contentType = upstream.headers.get('content-type') || 'image/jpeg';
+      const body = Buffer.from(await upstream.arrayBuffer());
+
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      return res.send(body);
+    } catch (error) {
+      console.error('Image proxy error:', error);
+      return res.status(502).json({ error: 'Proxy failed' });
+    }
+  });
+
+
  app.listen(8081, () => {
     console.log("server running");
   });
