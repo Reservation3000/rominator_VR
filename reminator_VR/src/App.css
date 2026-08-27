@@ -1,3 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300;700&display=swap');
+
+
 /* 確保 html 和 body 也不會產生多餘滾動空間 */
 html, body {
   width: 100%;
@@ -83,16 +86,20 @@ html, body {
 /* 旋轉定位每個 Avatar=歌曲 ========================================*/
 .mgCardsWrapper {
     position: absolute;
+    --card-radius: 250px;
     /* top: var(--top); */
     /* left: var(--left); */
     top: -85px;
     left: -85px;
-    /*         旋轉角度             往外推開 140px 距離     保持圖片正向  */
-    transform: rotate(var(--angle)) translate(250px) rotate(calc(90deg));
+    /*         旋轉角度             往外推開 140px 距離             保持圖片正向  */
+    transform: rotate(var(--angle)) translate(var(--card-radius)) rotate(calc(90deg));
     /* transform:  translate(-50%, -50%) ; */
     transition: transform 0.3s ease;
 }
-
+/*  選歌表單中，每張Avatar，在滑鼠觸碰下，往外推開距離變大 =================*/
+.mgCardsWrapper:hover {
+    --card-radius: 265px;
+}
 /* 選歌表單中，每張card中央的圓形 ==================================*/
 .certenCircle {
   background-color: rgba(0, 0, 0, 0.8) ;
@@ -120,7 +127,7 @@ html, body {
     box-sizing: border-box; /* 確保邊框計算在元素尺寸內 */
     box-shadow: 
         0px 5px 15px rgba(0, 0, 0, 0.3), /* 原本的陰影 */
-        0 0 0 10px rgb(255, 251, 25);     /* 黃色外框（向外擴展） */
+        0 0 0 5px rgb(255, 251, 25);     /* 黃色外框（向外擴展） */
 }
 @keyframes spin {
     from {
@@ -262,4 +269,56 @@ html, body {
     }
 }
 
+
+/*====================================================================================== */
+/* status = 3 遊玩結束後的分數畫面======================================================== */
+/*====================================================================================== */
+.showChoseSongScoresBack {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+}
+
+.showChoseSongScoresImg{
+    position: absolute;
+    top: 15%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.seatCircle{
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 450px;
+    height: 450px;
+    transform: translate(-50%, -50%);
+    background-color: #070707;
+    border-radius: 50%;
+}
+
+.bigCircle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 700px;
+    height: 700px;
+    transform: translate(-50%, -50%);
+    background-color: #373739;
+    border-radius: 50%;
+  }
+
+.scoreChars {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(var(--x), var(--y)) translate(-50%, -50%) rotate(var(--rotate));
+        color: white;
+        font-size: 2rem;
+        font-weight: 300;
+        font-family: 'Quicksand', sans-serif;
+}
 /* -------------------------------------------------------------------------*/
+
+
+

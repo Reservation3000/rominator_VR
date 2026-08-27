@@ -19,8 +19,11 @@ import {
   ProcessChoseCSVData,
   GameMusicComponent,
   PlayerMark,
+  PuaseButtom,
   JudgeTextComponent,
-  CommboTextComponent 
+  CommboTextComponent,
+  ShowChoseSongScoresBack,
+  ShowChoseSongText
 } from "./component.jsx";
 
 import { 
@@ -53,9 +56,10 @@ function App() {
   const [getPage, setPage] = useState(0);         // 現在是第幾頁
   const [getNoteCSVData, setNoteCSVData] = useState([]); //存入處理好的歌曲資料
   const [getMusicTimeMs, setMusicTimeMs] = useState(0);    //現在的樂曲進行時間
+  const [getStop, setStop] = useState(true);       // 遊戲是否暫停
 
   const [getCommbo, setCommbo] = useState(0);
-  const [getPrefect, setPrefect] = useState(0);
+  const [getPerfect, setPerfect] = useState(0);
   const [getGood, setGood] = useState(0);
   const [getMiss, setMiss] = useState(0);
   const [getJudgeStatus, setJudgeStatus] = useState(null); //判定狀態
@@ -87,7 +91,7 @@ function App() {
   const mouseXR = MouseTrackerR();
   const mouseXD = MouseTrackerD();
   
-
+  console.log(getTouch);
   //===============================================================
   // return =======================================================
   //===============================================================
@@ -118,12 +122,10 @@ function App() {
         </>
       )}
 
-      {(getStatus === 2 || getStatus === 2.5) && (
+      {(getStatus === 2 ) && (
         <>
-        
         {/*把getChose的樂曲資料，抓csv資料並做分類處裡，並丟進setNoteData */}
         <ProcessChoseCSVData  getChose={getChose} setNoteCSVData={setNoteCSVData}/>
-        
         
          <main className = "canva">
             <Canvas gl={{ toneMappingExposure: 1 }}>
@@ -138,7 +140,7 @@ function App() {
               <BackImg radius={3.93} getChose={getChose}/>
               <LogicOfNotes getMusicTimeMs={getMusicTimeMs} 
                             onlyNotes={onlyNotes}
-                            setPrefect={setPrefect} 
+                            setPerfect={setPerfect} 
                             setGood={setGood} 
                             setMiss={setMiss} 
                             setCommbo={setCommbo}
@@ -149,7 +151,7 @@ function App() {
               />
               <LogicOfRotate  getMusicTimeMs={getMusicTimeMs} 
                               onlyRotate={onlyRotate}
-                              setPrefect ={setPrefect}
+                              setPerfect ={setPerfect}
                               setGood={setGood}
                               setMiss={setMiss}
                               setCommbo={setCommbo}
@@ -159,7 +161,7 @@ function App() {
               <LogicOfDarg  getMusicTimeMs={getMusicTimeMs} 
                             onlyDrag={onlyDrag}
                             mouseXR={mouseXR}
-                            setPrefect={setPrefect}
+                            setPerfect={setPerfect}
                             setGood={setGood}
                             setMiss={setMiss}
                             setCommbo={setCommbo}
@@ -182,7 +184,15 @@ function App() {
               </EffectComposer>
             </Canvas>
           </main>
-          < GameMusicComponent getChose={getChose} setMusicTimeMs={setMusicTimeMs} setStatus={setStatus}/>
+          < GameMusicComponent getChose={getChose} setMusicTimeMs={setMusicTimeMs} setStatus={setStatus} getStop={getStop} setStop={setStop}/>
+          <PuaseButtom getStop={getStop} setStop={setStop} />
+        </>
+      )}
+
+      {(getStatus === 3) && (
+        <>
+          <ShowChoseSongScoresBack getChose={getChose} setStatus={setStatus} getCommbo={getCommbo} getPerfect={getPerfect} getGood={getGood} getMiss={getMiss}/>
+          <ShowChoseSongText whichGet={getPerfect} offset={0}/>
         </>
       )}
 

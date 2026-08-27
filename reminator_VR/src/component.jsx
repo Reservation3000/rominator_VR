@@ -1,14 +1,11 @@
 import { Slider } from 'antd';
-import { Card, Col, Row } from 'antd';
 import { useRef, useEffect ,  useState } from 'react';
 import { Avatar } from 'antd';
-import {  Space , Button } from 'antd';
-import { useMouse } from "@reactuses/core";
+import {  Button } from 'antd';
 import  Papa  from  'papaparse' ;
 import { Text } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { PerspectiveCamera } from '@react-three/drei';
 import {  CaretRightFilled,
           CaretLeftFilled 
 } from '@ant-design/icons';
@@ -18,7 +15,18 @@ import {
 }from './hooks/hooks.jsx'; 
 
 import {
-  imageProxyURL
+  imageProxyURL,
+  startPosition,
+  menuMgCardsSize,
+  menuCertenCircleSize,
+  endPosition,
+  seatRadius,            
+  gameAreaRingRadiusIn,  
+  gameAreaRingRadiusOut,  
+  seatRingRadiusIn,  
+  seatRingRadiusOut,   
+  playerMarkIn,
+  playerMarkOut  
 } from "./constants.js";
 
 //==========================================================================================
@@ -79,7 +87,7 @@ export const MenuComponent = ({getsongs , setTouch , setChose , setStatus , getP
             style={{'--angle':`${angle}deg`}}
           >
             <Avatar className="mgCards" 
-                  size={160}
+                  size={menuMgCardsSize}
                   title={ID.name} 
                   variant="borderless"
                   src={ID.img}
@@ -91,7 +99,7 @@ export const MenuComponent = ({getsongs , setTouch , setChose , setStatus , getP
             />
 
             <Avatar className='certenCircle'
-                  size={30}
+                  size={menuCertenCircleSize}
                   title={ID.name} 
                   variant="borderless"
             />
@@ -145,6 +153,7 @@ export const MenuMusicComponent = ({ getTouch , getChose}) => {
             style={{ position: 'absolute' }}
             src={getTouch.mp3} 
              ref={musicTouched}
+             loop
              autoPlay 
              onLoadedMetadata={(e) => {
                 // 當音訊資料載入完成後，將當前播放時間指向指定的秒數
@@ -155,6 +164,16 @@ export const MenuMusicComponent = ({ getTouch , getChose}) => {
   );
 };
 
+export const MenuSongInstruction = ({ getChose }) => {
+  // const angle = getChose
+
+  // return (
+  //    <CaretLeftFilled 
+  //           disabled={getPage  <= 0}
+  //           onClick={() => {if (!isFirstPage) setPage(prev => prev - 1);}}
+  //         />
+  // );
+}
 
 //==========================================================================================
 //過場 1====================================================================================
@@ -218,9 +237,9 @@ export const ProcessChoseCSVData = ({ getChose , setNoteCSVData }) => {
             ...item,
             density: density,
             noteSpeed: 0.05,
-            startPosition: 3.8,
-            endPosition: 1.2,
-            lifePosition: 1,
+            startPosition: startPosition,
+            endPosition: endPosition,
+            lifePosition: endPosition - 0.1,
             notePosition: 5,
             segmentStates: Array.from({ length: density + 1 }, () => ({
               isJudged: false,
@@ -232,9 +251,9 @@ export const ProcessChoseCSVData = ({ getChose , setNoteCSVData }) => {
           return {
             ...item,
             noteSpeed: 0.05,
-            startPosition: 3.8,
-            endPosition: 1.2,
-            lifePosition: 1,
+            startPosition: startPosition,
+            endPosition: endPosition,
+            lifePosition: endPosition - 0.1,
             isActive: false,
             isJudged: false,
             judgeStyle: 0,
@@ -292,7 +311,6 @@ export const ShowChoseSong = ({ getChose , setStatus}) => {
 };
 
 
-
 //==========================================================================================
 //遊玩 2====================================================================================
 //==========================================================================================
@@ -303,40 +321,41 @@ export const Box = ({ position, getJudgeStatus , getTotalCombo}) => {
 
   return (
     <group position={position}>
-      {/* 圓形 Mesh */}
+      {/* 圓形 座位 */}
       <mesh>
-        <circleGeometry args={[0.95, 32]} />
+        <circleGeometry args={[seatRadius, 64]} /> 
         <meshStandardMaterial color={color} emissive={color} emissiveIntensity={colorBloomValue-0.2} transparent={true} opacity={transparency}/>
       </mesh>
 
-      {/* 環形 Mesh */}
+      {/* 環形 遊戲範圍 */}
       <mesh>
-        <ringGeometry args={[3.9, 3.93, 64, 1]} />
+        <ringGeometry args={[gameAreaRingRadiusIn, gameAreaRingRadiusOut, 64]} /> 
         <meshStandardMaterial color={color} emissive={color} emissiveIntensity={colorBloomValue} transparent={true} opacity={transparency}/>
       </mesh>
 
+      {/* 環形 座位 */}
       <mesh>
-        <ringGeometry args={[0.955, 0.96, 64]} />
+        <ringGeometry args={[seatRingRadiusIn, seatRingRadiusOut, 64]} /> 
         <meshStandardMaterial color="rgb(107, 107, 107)" transparent={true} />
       </mesh>
     </group>
   );
 };
 
-export const GameMusicComponent = ({ getChose, setMusicTimeMs, setStatus }) => {
+export const GameMusicComponent = ({ getChose, setMusicTimeMs, setStatus , getStop , setStop}) => {
   const musicChose = useRef(null);
-  const [getPlay, setPlay] = useState(true); // true => 進來就自動播放，
+  
 
   // 根據 getplay 的改變來控制播放與暫停
 useEffect(() => {
     if (!musicChose.current) return;
 
-    if (getPlay) {
+    if (getStop) {
       musicChose.current.play();
     } else {
       musicChose.current.pause();
     }
-  }, [getPlay]);
+  }, [getStop]);
 
   // 處理時間同步
   useEffect(() => {
@@ -368,11 +387,10 @@ useEffect(() => {
         ref={musicChose}
         src={getChose.mp3}
         autoPlay
-        onPlay={() => setPlay(true)}   // 確保 DOM 實際播放時，state 是 true
-        onPause={() => setPlay(false)} // 確保 DOM 實際暫停時，state 是 false
-        onEnded={() => setStatus(0)}   // 回到選歌介面
+        onPlay={() => setStop(true)}   // 確保 DOM 實際播放時，state 是 true
+        onPause={() => setStop(false)} // 確保 DOM 實際暫停時，state 是 false
+        onEnded={() => setStatus(3)}   // 回到選歌介面
       />
-      <PuaseButtom getPlay={getPlay} setPlay={setPlay} />
     </>
   );
 }
@@ -382,20 +400,20 @@ export const PlayerMark = ({ mouseXR }) => {
   const halfArcLong = arcLong/2
   return (
     <mesh rotation={[0, 0, mouseXR]}>
-      <ringGeometry args={[1, 1.05, 32, 1, -halfArcLong, arcLong ]} />
+      <ringGeometry args={[playerMarkIn, playerMarkOut, 32, 1, -halfArcLong, arcLong ]} />
       <meshStandardMaterial color={"rgb(255, 236, 33)"} emissive={"rgb(255, 236, 33)"} emissiveIntensity={3} side={2} />
     </mesh>
   );
 };
 
-const PuaseButtom = ({ getPlay, setPlay }) => {
+export const PuaseButtom = ({ getStop, setStop }) => {
   return (
     <div className="puaseButtom">
       <Button
         type="text"
-        onClick={() => setPlay(prev => !prev)}
+        onClick={() => setStop(prev => !prev)}
       >
-        {getPlay ? 'Pause' : 'Play'} {/* 讓按鈕文字隨狀態動態改變，方便辨識 */}
+        {getStop ? 'Pause' : 'Play'} {/* 讓按鈕文字隨狀態動態改變，方便辨識 */}
       </Button>
     </div>
   );
@@ -412,7 +430,7 @@ export const JudgeTextComponent = ({ radius = 4.2, getJudgeStatus , getTotalComb
 
   if (!judgeText) return null;
 
-  const chars = judgeText.split("");
+  const chars = judgeText.split(""); // 將字串拆分為單個字元的陣列
   
   // 設定每個相鄰字元之間的固定角度間距（可依字體大小微調此數值）
   const angleStep = 0.1; 
@@ -535,6 +553,49 @@ export const BackImg = ({ radius, getChose }) => {
     );
 }
 
+
+//==========================================================================================
+//分數結算=============================================================================
+//==========================================================================================
+export const ShowChoseSongScoresBack = ({ getChose }) => {
+    return (
+     <div className="showChoseSongScoresBack">
+      <div className="bigCircle"></div>
+      <div className="seatCircle"></div>
+      <div className='showChoseSongScoresImg'>
+        <Avatar size={240} src={getChose.img} />
+      </div>
+    </div>
+  );
+}
+
+
+export const ShowChoseSongText = ({ whichGet , offset}) => {
+
+  // 將數字轉為字串，再拆分為單個字元的陣列
+  const whichGetCharCount = String(whichGet).split('');
+  const angleStep = 0.14; // 設定每個相鄰字元之間的固定角度間距
+  const radius = 30; // 設定圓弧半徑
+
+  return (
+    whichGetCharCount.map((char, i) => {
+      const baseAngle = (i - (whichGetCharCount.length - 1) / 2) * angleStep;  //以整串文字的中心點為基準向兩側展開
+      const angle = baseAngle + offset;     //不同的字，不同偏移
+      const x = Math.cos(angle) * radius;   //極座標計算
+      const y = Math.sin(angle) * radius;
+
+      const rotateAngle = angle - Math.PI / 2 + Math.PI;  // 計算字元旋轉角度
+
+      return (
+        <div key={`${char}-${i}`} className="scoreChars"
+          style={{ '--x': `${x}vh`,  '--y': `${y}vh`,  '--rotate': `${rotateAngle}rad`}}
+        >
+          {char}
+        </div>
+      );
+    })
+  );
+}
 
 //==========================================================================================
 //fix component=============================================================================
