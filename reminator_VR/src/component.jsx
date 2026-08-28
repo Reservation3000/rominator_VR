@@ -26,7 +26,7 @@ import {
   seatRingRadiusIn,  
   seatRingRadiusOut,   
   playerMarkIn,
-  playerMarkOut  
+  playerMarkOut,
 } from "./constants.js";
 
 //==========================================================================================
@@ -48,23 +48,23 @@ export const Roundabout =() =>{
   );
 }
 
-export const MenuComponent = ({getsongs , setTouch , setChose , setStatus , getPage , songTotal , pageTotal}) => {
+export const MenuComponent = ({ mouseXD , getsongs , setTouch , setChose , setStatus , getPage , songTotal , pageTotal}) => {
 
   const pageLimit = 8;
   const pageStartIndex = getPage * pageLimit; // 開始索引
   const pageEndIndex = pageStartIndex + pageLimit; // 結束索引
   const pageNow = getsongs.slice(pageStartIndex, pageEndIndex); // 當頁切出來的歌單
-  
-  console.log({
-    "共有幾首歌":songTotal,
-    "共有幾頁":pageTotal,
-    "現在在第幾頁":getPage,
-    "這頁起始數字":pageStartIndex,
-    "這頁結束數字":pageEndIndex,
-    "當頁有幾首歌":pageNow.length, 
-    "當頁的資料內容":pageNow                     
-  }
-  );
+  console.log(mouseXD);
+  // console.log({
+  //   "共有幾首歌":songTotal,
+  //   "共有幾頁":pageTotal,
+  //   "現在在第幾頁":getPage,
+  //   "這頁起始數字":pageStartIndex,
+  //   "這頁結束數字":pageEndIndex,
+  //   "當頁有幾首歌":pageNow.length, 
+  //   "當頁的資料內容":pageNow                     
+  // }
+  // );
 
   return (
       <div className="Menu">
@@ -78,14 +78,15 @@ export const MenuComponent = ({getsongs , setTouch , setChose , setStatus , getP
             // const y = radius * Math.sin(angle);
             const totalInThisPage = pageNow.length; //這頁有幾首歌
             const angle = (index / totalInThisPage)*360;  // 這頁的x首歌平分角度
-              
+
             return(
           <div 
             key={ID.id}
-            className="mgCardsWrapper" // 旋轉定位
+            className='mgCardsWrapper' // 旋轉定位
             // style={{ '--top': `calc(50% + ${y}px)`,  '--left': `calc(50% + ${x}px)`}}
             style={{'--angle':`${angle}deg`}}
           >
+            {/* 歌曲卡片 */}
             <Avatar className="mgCards" 
                   size={menuMgCardsSize}
                   title={ID.name} 
@@ -94,15 +95,19 @@ export const MenuComponent = ({getsongs , setTouch , setChose , setStatus , getP
                   onMouseEnter={() => setTouch(ID)}  //滑鼠摸到
                   onClick={() => {                   //滑鼠點擊
                     setChose(ID);
-                    setStatus(1);
+                    setStatus(2);
                   }}
             />
-
+        
+            {/* 中心圓圈 */}
             <Avatar className='certenCircle'
                   size={menuCertenCircleSize}
                   title={ID.name} 
                   variant="borderless"
             />
+
+            <p className=' MenuMusicName'> {ID.name} </p>
+            <p className=' MenuMusicLevel'> {ID.level} </p>
 
           </div>
           )})}
@@ -321,6 +326,13 @@ export const Box = ({ position, getJudgeStatus , getTotalCombo}) => {
 
   return (
     <group position={position}>
+
+      {/* 環形 座位 */}
+      <mesh>
+        <ringGeometry args={[seatRingRadiusIn, seatRingRadiusOut, 64]} /> 
+        <meshStandardMaterial color="rgb(113, 115, 119)" transparent={true} />
+      </mesh>
+
       {/* 圓形 座位 */}
       <mesh>
         <circleGeometry args={[seatRadius, 64]} /> 
@@ -333,11 +345,6 @@ export const Box = ({ position, getJudgeStatus , getTotalCombo}) => {
         <meshStandardMaterial color={color} emissive={color} emissiveIntensity={colorBloomValue} transparent={true} opacity={transparency}/>
       </mesh>
 
-      {/* 環形 座位 */}
-      <mesh>
-        <ringGeometry args={[seatRingRadiusIn, seatRingRadiusOut, 64]} /> 
-        <meshStandardMaterial color="rgb(107, 107, 107)" transparent={true} />
-      </mesh>
     </group>
   );
 };
@@ -376,7 +383,7 @@ useEffect(() => {
     rafId = requestAnimationFrame(tick);
 
     return () => cancelAnimationFrame(rafId);
-  }, [setMusicTimeMs]); // 移除不必要的 getChose 依賴，避免重複註冊
+  }, [setMusicTimeMs]); 
 
   if (!getChose.mp3) return null;
 
@@ -555,47 +562,61 @@ export const BackImg = ({ radius, getChose }) => {
 
 
 //==========================================================================================
-//分數結算=============================================================================
+//分數結算3 =================================================================================
 //==========================================================================================
-export const ShowChoseSongScoresBack = ({ getChose }) => {
+export const ShowChoseSongScoresBack = () => {
     return (
      <div className="showChoseSongScoresBack">
       <div className="bigCircle"></div>
       <div className="seatCircle"></div>
+    </div>
+  );
+}
+
+export const ShowChoseSongScoresImg = ({ getChose }) => {
+  return (
+    <div className="showChoseSongScoresImgLayer">
       <div className='showChoseSongScoresImg'>
-        <Avatar size={240} src={getChose.img} />
+        <Avatar src={getChose.img} />
       </div>
     </div>
   );
 }
 
-
-export const ShowChoseSongText = ({ whichGet , offset}) => {
+export const ShowGameSongText = ({ className, whichGet, offset, r, a }) => {
 
   // 將數字轉為字串，再拆分為單個字元的陣列
   const whichGetCharCount = String(whichGet).split('');
-  const angleStep = 0.14; // 設定每個相鄰字元之間的固定角度間距
-  const radius = 30; // 設定圓弧半徑
+  const isChinese = /[\u4e00-\u9fa5]/.test(whichGetCharCount.join('')); // 檢查是否包含中文
+  const angleStep = isChinese ? a+0.1 : a; // 中文字元間距較大，英文或數字間距較小
+  const radius = r;
 
   return (
-    whichGetCharCount.map((char, i) => {
-      const baseAngle = (i - (whichGetCharCount.length - 1) / 2) * angleStep;  //以整串文字的中心點為基準向兩側展開
-      const angle = baseAngle + offset;     //不同的字，不同偏移
-      const x = Math.cos(angle) * radius;   //極座標計算
-      const y = Math.sin(angle) * radius;
+    <div className={className}>
+      {whichGetCharCount.map((char, i) => {
 
-      const rotateAngle = angle - Math.PI / 2 + Math.PI;  // 計算字元旋轉角度
+        const baseAngle =
+          (i - (whichGetCharCount.length - 1) / 2) * angleStep;
 
-      return (
-        <div key={`${char}-${i}`} className="scoreChars"
-          style={{ '--x': `${x}vh`,  '--y': `${y}vh`,  '--rotate': `${rotateAngle}rad`}}
-        >
-          {char}
-        </div>
-      );
-    })
+        const angle = baseAngle + offset;
+
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
+
+        const rotateAngle =
+          angle - Math.PI / 2 + Math.PI;
+
+        return (
+          <div key={`${char}-${i}`} className="scoreChars"
+            style={{'--x': `${x*9}px`, '--y': `${y*9}px`, '--rotate': `${rotateAngle}rad`}}
+          >
+            {char}
+          </div>
+        );
+      })}
+    </div>
   );
-}
+};
 
 //==========================================================================================
 //fix component=============================================================================
@@ -608,6 +629,28 @@ export const SliderComponent = ({setVal}) => {
     </div>
   );
 }
+
+export const StatusControl = ({ setStatus }) => {
+  const handleKeyDown = (event) => {
+    if (event.key === '0') {
+      setStatus(0);
+    } else if (event.key === '1') {
+      setStatus(1);
+    } else if (event.key === '2') {
+      setStatus(2);
+    } else if (event.key === '3') {
+      setStatus(3);
+    }
+  };
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  return null;
+};
 
 
 

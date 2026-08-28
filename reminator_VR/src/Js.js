@@ -47,9 +47,9 @@ setInterval(() => {
   const oldAngle = angleHistory.angle;
   let diff = angle - oldAngle;
 
-  if (diff >= 7) {
+  if (diff >= 6) {
     rotateResult = 1;
-  } else if (diff <= -7) {
+  } else if (diff <= -6) {
     rotateResult = 2;
   } else {
     rotateResult = 0;

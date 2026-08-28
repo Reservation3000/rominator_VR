@@ -1,9 +1,11 @@
 import { Canvas , useFrame } from "@react-three/fiber";
+import { XR, createXRStore , XRButton} from '@react-three/xr';
 import { Stats } from "@react-three/drei";
 import { Slider } from 'antd';
 import { Card, Col, Row } from 'antd';
 import { useRef , useState , useEffect} from "react";
 import { OrbitControls } from '@react-three/drei'; 
+import { Html } from '@react-three/drei';
 import { GizmoHelper, GizmoViewport } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import "./App.css";
@@ -23,7 +25,9 @@ import {
   JudgeTextComponent,
   CommboTextComponent,
   ShowChoseSongScoresBack,
-  ShowChoseSongText
+  ShowGameSongText,
+  ShowChoseSongScoresImg,
+  StatusControl
 } from "./component.jsx";
 
 import { 
@@ -37,11 +41,11 @@ import {
   LogicOfDarg
 } from "./notesComponent"
 
-import { 
-  serverURL 
- } from "./constants.js";
+// import { 
+//   serverURL 
+//  } from "./constants.js";
 
-
+const xrStore = createXRStore();
 
 //===============================
 //  App 
@@ -78,124 +82,175 @@ function App() {
   const onlyDrag = getNoteCSVData.filter((note) => note.type === 'drag');
   
 
+  // 讀取伺服器，抓歌曲資料，並存入 getsongs============================
+  // useEffect(() => {
+  //   fetch(serverURL)
+  //     .then(res => res.json())
+  //     .then(data =>{
+  //       console.log(data);
+  //       setSongs(data);
+  //       })
+  //     .catch(err => console.log(err));
+  // },[])
+
+
+  // 讀取本地歌曲資料，並存入歌曲狀態===================================
   useEffect(() => {
-    fetch(serverURL)
-      .then(res => res.json())
-      .then(data =>{
-        console.log(data);
+    fetch('/VRsongData.json')
+      .then((res) => res.json())
+      .then((data) => {
         setSongs(data);
-        })
-      .catch(err => console.log(err));
-  },[])
+      })
+      .catch((err) => console.error('讀取 JSON 失敗:', err));
+  }, []);
+
 
   const mouseXR = MouseTrackerR();
   const mouseXD = MouseTrackerD();
+
+  const hitPresent = Math.round(((getPerfect + getGood) / getTotalCombo) * 100) ;
   
-  console.log(getTouch);
+  // console.log(getTouch);
   //===============================================================
   // return =======================================================
   //===============================================================
   return (
     <>
+    <XRButton store={xrStore} mode="immersive-vr" />
 
-      {(getStatus === 0) && (
-        <>
-          <div className="MenuContainer">
-            <MenuMusicComponent getTouch={getTouch} getChose={getChose} />  {/* 選歌表單中，觸碰撥放音樂的邏輯 */}
-            <MenuComponent  getsongs={getsongs} 
-                            setTouch ={setTouch} 
-                            setChose={setChose} 
-                            setStatus={setStatus} 
-                            setPage={setPage} 
-                            getPage={getPage} 
-                            pageTotal={pageTotal}/> 
-                            {/* 選歌表單中，取得所有音樂、觸碰卡片、選擇卡片的邏輯 */}
-            <MenuPageSwitchBottom setPage={setPage} getPage={getPage} pageTotal={pageTotal}/>
-            <Roundabout/>
-            </div>
-        </>
-     )}
+    <Canvas gl={{ toneMappingExposure: 1 }}>
+      <XR store={xrStore}>
+        <StatusControl setStatus={setStatus} />
 
-      {(getStatus === 1) && (
-        <>
-          <ShowChoseSong getChose={getChose} setStatus={setStatus} />
-        </>
-      )}
+        <Html fullscreen>
+          {(getStatus === 0) && (
+            <>
+              <div className="MenuContainer">
+                <MenuMusicComponent getTouch={getTouch} getChose={getChose} />  {/* 選歌表單中，觸碰撥放音樂的邏輯 */}
+                <MenuComponent  mouseXD={mouseXD}
+                                getsongs={getsongs} 
+                                setTouch ={setTouch} 
+                                setChose={setChose} 
+                                setStatus={setStatus} 
+                                setPage={setPage} 
+                                getPage={getPage} 
+                                pageTotal={pageTotal}/> 
+                {/* 選歌表單中，取得所有音樂、觸碰卡片、選擇卡片的邏輯 */}
+                <MenuPageSwitchBottom setPage={setPage} getPage={getPage} pageTotal={pageTotal}/>
+                <Roundabout/>
+              </div>
+            </>
+        )}
 
-      {(getStatus === 2 ) && (
-        <>
-        {/*把getChose的樂曲資料，抓csv資料並做分類處裡，並丟進setNoteData */}
-        <ProcessChoseCSVData  getChose={getChose} setNoteCSVData={setNoteCSVData}/>
+          {(getStatus === 1) && (
+            <>
+              <ShowChoseSong getChose={getChose} setStatus={setStatus} />
+            </>
+          )}
+
+          {(getStatus === 3) && (
+            <>
+              {/*環*/}
+              <Roundabout/>
+              {/* 背景 */}
+              <ShowChoseSongScoresBack getChose={getChose}/>
+
+              <div className="ShowGameSongContainer">
+                {/* 分數 */}
+                <ShowGameSongText whichGet={getPerfect} offset={-0.7} r={30} a={0.14}/>
+                <ShowGameSongText whichGet={getGood} offset={0.1} r={30} a={0.14}/>
+                <ShowGameSongText whichGet={getMiss} offset={0.9} r={30} a={0.14}/>
+                <ShowGameSongText whichGet={getCommbo} offset={2.4} r={30} a={0.14}/>
+                <ShowGameSongText whichGet={hitPresent} offset={3.6} r={30} a={0.14}/>
+
+                {/* 分數標題 */}
+                <ShowGameSongText whichGet={"PREFECT"} offset={-0.7} r={35} a={0.1}/>
+                <ShowGameSongText whichGet={"GOOD"} offset={0.1} r={35} a={0.1}/>
+                <ShowGameSongText whichGet={"MISS"} offset={0.9} r={35} a={0.1}/>
+                <ShowGameSongText whichGet={"MAXCOMMBO"} offset={2.4} r={35} a={0.1}/>
+                <ShowGameSongText whichGet={"HIT%"} offset={3.6} r={35} a={0.1}/>
+
+                {/* 曲名 */}
+                <ShowGameSongText className={"ShowGameSongTextName"} whichGet={getChose.name} offset={0} r={24} a={0.1}/>
+                <ShowGameSongText className={"ShowGameSongTextName"} whichGet={getChose.name} offset={Math.PI} r={24} a={0.1}/>
+              
+                {/* 圖片 */}
+                <ShowChoseSongScoresImg getChose={getChose}/>
+              </div>
+            </>
+          )}
+        </Html>
+
         
-         <main className = "canva">
-            <Canvas gl={{ toneMappingExposure: 1 }}>
-              {/* <directionalLight position={[0, 0, 2]} /> */}
 
-              <GizmoHelper alignment="bottom-right" margin={[80, 80]}>
-                <GizmoViewport axisColors={['#ff3653', '#009b00', '#0070ff']} labelColor="white" />
-              </GizmoHelper>
-              < OrbitControls/>
-              <ambientLight intensity={2} />
+          {(getStatus === 2 ) && (
+            <>
+            {/*把getChose的樂曲資料，抓csv資料並做分類處裡，並丟進setNoteData */}
+            <ProcessChoseCSVData  getChose={getChose} setNoteCSVData={setNoteCSVData}/>
+            
+            {/* <div className = "canva"> */}
+                  {/* <directionalLight position={[0, 0, 2]} /> */}
 
-              <BackImg radius={3.93} getChose={getChose}/>
-              <LogicOfNotes getMusicTimeMs={getMusicTimeMs} 
-                            onlyNotes={onlyNotes}
-                            setPerfect={setPerfect} 
-                            setGood={setGood} 
-                            setMiss={setMiss} 
-                            setCommbo={setCommbo}
-                            setTotalCombo={setTotalCombo}
-                            getCommbo={getCommbo}
-                            setJudgeStatus={setJudgeStatus}
-                            mouseXR={mouseXR}
-              />
-              <LogicOfRotate  getMusicTimeMs={getMusicTimeMs} 
-                              onlyRotate={onlyRotate}
-                              setPerfect ={setPerfect}
-                              setGood={setGood}
-                              setMiss={setMiss}
-                              setCommbo={setCommbo}
-                              setTotalCombo={setTotalCombo}
-                              setJudgeStatus={setJudgeStatus}
-              />
-              <LogicOfDarg  getMusicTimeMs={getMusicTimeMs} 
-                            onlyDrag={onlyDrag}
-                            mouseXR={mouseXR}
-                            setPerfect={setPerfect}
-                            setGood={setGood}
-                            setMiss={setMiss}
-                            setCommbo={setCommbo}
-                            setTotalCombo={setTotalCombo}
-                            setJudgeStatus={setJudgeStatus}
-              />
-              <PlayerMark mouseXR={mouseXR}/>
-              <Box position={[0, 0, 0]} key={`box-${getTotalCombo}`} getJudgeStatus={getJudgeStatus} getTotalCombo={getTotalCombo}/>
-              <JudgeTextComponent key={`judge-${getTotalCombo}`} getJudgeStatus={getJudgeStatus} getTotalCombo={getTotalCombo}/>
-              <CommboTextComponent key={`combo-${getTotalCombo}`} getCommbo={getCommbo} getTotalCombo={getTotalCombo}/>
+                  <GizmoHelper alignment="bottom-right" margin={[80, 80]}>
+                    <GizmoViewport axisColors={['#ff3653', '#009b00', '#0070ff']} labelColor="white" />
+                  </GizmoHelper>
+                  < OrbitControls/>
+                  <ambientLight intensity={2} />
 
-              {/* react-three/postprocessing 特效處理 */}
-              <EffectComposer>
-                <Bloom 
-                  intensity={1.5}          // 輝光的整體強度
-                  luminanceThreshold={0.2} // 設定為 1 代表只有特別指定 toneMapped={false} 且數值超標的材質會發光
-                  luminanceSmoothing={0.9} // 輝光邊緣的滑順度
-                  radius={0.5}             // 輝光擴散的範圍大小
-                />
-              </EffectComposer>
-            </Canvas>
-          </main>
-          < GameMusicComponent getChose={getChose} setMusicTimeMs={setMusicTimeMs} setStatus={setStatus} getStop={getStop} setStop={setStop}/>
-          <PuaseButtom getStop={getStop} setStop={setStop} />
-        </>
-      )}
+                  <BackImg radius={3.93} getChose={getChose}/>
+                  <LogicOfNotes getMusicTimeMs={getMusicTimeMs} 
+                                onlyNotes={onlyNotes}
+                                setPerfect={setPerfect} 
+                                setGood={setGood} 
+                                setMiss={setMiss} 
+                                setCommbo={setCommbo}
+                                setTotalCombo={setTotalCombo}
+                                getCommbo={getCommbo}
+                                setJudgeStatus={setJudgeStatus}
+                                mouseXR={mouseXR}
+                  />
+                  <LogicOfRotate  getMusicTimeMs={getMusicTimeMs} 
+                                  onlyRotate={onlyRotate}
+                                  setPerfect ={setPerfect}
+                                  setGood={setGood}
+                                  setMiss={setMiss}
+                                  setCommbo={setCommbo}
+                                  setTotalCombo={setTotalCombo}
+                                  setJudgeStatus={setJudgeStatus}
+                  />
+                  <LogicOfDarg  getMusicTimeMs={getMusicTimeMs} 
+                                onlyDrag={onlyDrag}
+                                mouseXR={mouseXR}
+                                setPerfect={setPerfect}
+                                setGood={setGood}
+                                setMiss={setMiss}
+                                setCommbo={setCommbo}
+                                setTotalCombo={setTotalCombo}
+                                setJudgeStatus={setJudgeStatus}
+                  />
+                  <PlayerMark mouseXR={mouseXR}/>
+                  <Box position={[0, 0, 0]} key={`box-${getTotalCombo}`} getJudgeStatus={getJudgeStatus} getTotalCombo={getTotalCombo}/>
+                  <JudgeTextComponent key={`judge-${getTotalCombo}`} getJudgeStatus={getJudgeStatus} getTotalCombo={getTotalCombo}/>
+                  <CommboTextComponent key={`combo-${getTotalCombo}`} getCommbo={getCommbo} getTotalCombo={getTotalCombo}/>
 
-      {(getStatus === 3) && (
-        <>
-          <ShowChoseSongScoresBack getChose={getChose} setStatus={setStatus} getCommbo={getCommbo} getPerfect={getPerfect} getGood={getGood} getMiss={getMiss}/>
-          <ShowChoseSongText whichGet={getPerfect} offset={0}/>
-        </>
-      )}
-
+                  {/* react-three/postprocessing 特效處理 */}
+                  <EffectComposer>
+                    <Bloom 
+                      intensity={1.5}          // 輝光的整體強度
+                      luminanceThreshold={0.2} // 設定為 1 代表只有特別指定 toneMapped={false} 且數值超標的材質會發光
+                      luminanceSmoothing={0.9} // 輝光邊緣的滑順度
+                      radius={0.5}             // 輝光擴散的範圍大小
+                    />
+                  </EffectComposer>
+              {/* </div> */}
+              <Html>
+                <GameMusicComponent getChose={getChose} setMusicTimeMs={setMusicTimeMs} setStatus={setStatus} getStop={getStop} setStop={setStop}/>
+                <PuaseButtom getStop={getStop} setStop={setStop} />
+              </Html>
+            </>
+          )}
+        </XR>
+      </Canvas>
     </>
   );
 }

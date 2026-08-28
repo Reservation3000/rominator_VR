@@ -19,12 +19,12 @@ html, body {
 }
 
 /*遊玩畫布*/
-.canva{
+/* .canva{
     width: 100%;
     height: 100%;
     background-color: black;
     position: absolute;
-}
+} */
 
 /*遊玩時的暫停按鈕===============================================*/
 .puaseButtom{
@@ -42,7 +42,6 @@ html, body {
     position: relative;
     width: 100vw;
     height: 100vh;
-    background-color: black;
 }
 
 /* 選歌環形歌單的父層 ================================================*/
@@ -74,11 +73,11 @@ html, body {
 }
 @keyframes spinRoundabout {
     from {
-        transform: scale(1) rotate(360deg); 
+        transform: scale(1.1) rotate(360deg); 
     }
 
     to {
-        transform:  scale(1) rotate(0deg);
+        transform:  scale(1.1) rotate(0deg);
     }
 }
 
@@ -111,7 +110,7 @@ html, body {
   pointer-events: none; /* 穿透點擊 */
 }
 /* 選歌表單中，每張card在滑鼠觸碰下card中央的圓形也放大(設定父子關係) =*/
-.mgCardsWrapper:hover .certenCircle {
+.mgCardsWrapper:hover.certenCircle {
   transform: translate(-50%, -50%) scale(1.3) ; 
   transition: transform 0.5s ease; 
 }
@@ -120,7 +119,7 @@ html, body {
     border: 3px solid rgba(209, 209, 209, 0.723); /* 邊框 */
     transition: all 0.5s ease-in-out;
 }
-/*選歌表單中，每張card在滑鼠觸碰下==================================*/
+/*選歌表單中，每張card在滑鼠觸碰下，顯示黃色邊框==================================*/
 .mgCards:hover {
     animation: spin 8s linear infinite;
     border: 3px solid rgb(15, 15, 15); /* 實體邊框 */
@@ -156,11 +155,51 @@ html, body {
     background-color: rgb(1, 1, 1);
 }
 
+/* 選歌菜單_每首歌的名字 ================================*/
+.MenuMusicName {
+    position: absolute;
+    top: 110%;
+    left: 50%;
+    margin: 0;
+    transform-origin: center center;
+    transform: translate(-50%, -50%); 
+    font-size: 1rem;
+    color: rgb(255, 255, 255);
+    font-family: 'Quicksand', sans-serif;
+    white-space: nowrap; /* 避免文字自動換行打亂排版 */
+    transition: top 0.3s ease;
+}
+
+/* 選歌菜單_每首歌的name，在滑鼠觸碰到歌曲圖片時，往上移動 ================================*/
+.mgCards:hover ~ .MenuMusicName {
+    top: calc(110% + 25px);
+}
+
+/* 選歌菜單_每首歌的level ================================*/
+.MenuMusicLevel {
+    position: absolute;
+    top: -10%;
+    left: 50%;
+    margin: 0;
+    transform-origin: center center;
+    transform: translate(-50%, -50%); 
+    font-size: 1.5rem;
+    color: rgb(255, 255, 255);
+    font-family: 'Quicksand', sans-serif;
+    white-space: nowrap; /* 避免文字自動換行打亂排版 */
+    transition: top 0.3s ease;
+}
+
+/* 選歌菜單_每首歌的level，在滑鼠觸碰到歌曲圖片時，往下移動 ================================*/
+.mgCards:hover ~ .MenuMusicLevel {
+    top: calc(-10% - 25px);
+}
+
 /*選歌菜單的上下一頁按鈕_左邊_上一頁==========================================*/
 .MenuPageSwitchBottomLeft{
     position: absolute;
     top: 50%;
-    left: 21vw;
+    left: 22vw;
     transform: translate(-50%, -50%);
     font-size: 5rem;
     color: rgba(255, 255, 255, 0.19);
@@ -168,7 +207,7 @@ html, body {
 .MenuPageSwitchBottomLeft:hover{
     position: absolute;
     top: 50%;
-    left: 21vw;
+    left: 22vw;
     transform: translate(-50%, -50%);
     font-size: 5rem;
     color: rgb(255, 255, 255);
@@ -178,7 +217,7 @@ html, body {
 .MenuPageSwitchBottomRight{
     position: absolute;
     top: 50%;
-    right: 18vw;
+    right: 17vw;
     transform: translate(-50%, -50%);
     font-size: 5rem;
     color: rgba(255, 255, 255, 0.19);
@@ -186,7 +225,7 @@ html, body {
 .MenuPageSwitchBottomRight:hover{
     position: absolute;
     top: 50%;
-    right: 18vw;
+    right: 17vw;
     transform: translate(-50%, -50%);
     font-size: 5rem;
     color: rgb(255, 255, 255);
@@ -273,18 +312,56 @@ html, body {
 /*====================================================================================== */
 /* status = 3 遊玩結束後的分數畫面======================================================== */
 /*====================================================================================== */
+/* 遊玩結束後的分數畫面_背景 ========================================*/
 .showChoseSongScoresBack {
     position: relative;
     width: 100vw;
     height: 100vh;
 }
 
-.showChoseSongScoresImg{
+.ShowGameSongContainer{
     position: absolute;
-    top: 15%;
+    top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+    width: 100vw;
+    height: 100vh;
 }
+
+/* 遊玩結束後的分數畫面_圖片定位 ========================================*/
+.showChoseSongScoresImgLayer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+/* 遊玩結束後的分數畫面_圖片 ========================================*/
+.showChoseSongScoresImg{
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -150%);
+    box-sizing: border-box; /* 確保邊框計算在元素尺寸內 */
+    box-shadow: 0 0 0 5px rgb(0, 0, 0);  
+    border-radius: 50%; /* 圓形 */ 
+}
+
+/* 遊玩結束後的分數畫面_圖片_圓形 ========================================*/
+.showChoseSongScoresImg .ant-avatar {
+    width: 240px;
+    height: 240px;
+    animation: showChoseSongScoresImgSpin 25s linear infinite;
+}
+@keyframes showChoseSongScoresImgSpin {
+    from {
+        rotate: 0deg;
+    }
+
+    to {
+        rotate: 360deg;
+    }
+}
+
 
 .seatCircle{
     position: absolute;
@@ -309,16 +386,31 @@ html, body {
   }
 
 .scoreChars {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        transform: translate(var(--x), var(--y)) translate(-50%, -50%) rotate(var(--rotate));
-        color: white;
-        font-size: 2rem;
-        font-weight: 300;
-        font-family: 'Quicksand', sans-serif;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(var(--x), var(--y)) translate(-50%, -50%) rotate(var(--rotate));
+    color: white;
+    font-size: 2rem;
+    font-weight: 300;
+    font-family: 'Quicksand', sans-serif;
 }
+
+.ShowGameSongTextName {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    animation: ShowGameSongTextNameSpin 12s linear infinite;
+}
+
+@keyframes ShowGameSongTextNameSpin {
+    from {
+        rotate: 0deg;
+    }
+
+    to {
+        rotate: 360deg;
+    }
+}
+
 /* -------------------------------------------------------------------------*/
-
-
-
