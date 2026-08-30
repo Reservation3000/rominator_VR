@@ -3,9 +3,8 @@ import { create } from 'zustand';
 
 // Zustand store for VR angles========================================================
 export const useVRStore = create((set) => ({
-  angleD: 0,
   angleR: 0,
-  setAngles: (angleD, angleR) => set({ angleD, angleR }),
+  setAngles: (angleR) => set({ angleR }),
 }));
 
 

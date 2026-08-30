@@ -24,15 +24,15 @@ export function useFadeOut(trigger) {
 }
 
 // 自訂Rotate旋轉判定的hook ==================================================
-export function useRotateJudge() {
+export function useRotateJudge(getUseMouse , mouseXR) {
   const setRotateJudgeResult = useRotateJudgeResult((state) => state.setRotateJudgeResult);
-  
-  // 2. 用 useRef ，避免 re-render 
+
   const angleHistoryRef = useRef([]);
 
   useFrame(() => {
     // 取得當前 store 裡的弧度並轉成角度
-    const currentRadian = useVRStore.getState().angleR;  // 從 store 取得當前的弧度
+    const currentRadianVR = useVRStore.getState().angleR;  // 從 store 取得當前的弧度
+    const currentRadian = getUseMouse ? currentRadianVR : mouseXR;  // 根據 getUseMouse 決定使用哪個角度值
     const currentAngle = currentRadian * (180 / Math.PI);
 
     const now = performance.now();

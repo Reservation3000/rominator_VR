@@ -1,8 +1,9 @@
 import { Slider } from 'antd';
-import { useRef, useEffect ,  useState } from 'react';
+import { XR } from '@react-three/xr';
+import { useRef, useEffect, useState, useMemo } from 'react';
 import {  Button , Drawer , Avatar , Switch} from 'antd';
 import  Papa  from  'papaparse' ;
-import { Text } from '@react-three/drei';
+import { Text , useTexture} from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import {  CaretRightFilled,
@@ -15,9 +16,10 @@ import {
 
 import {
   imageProxyURL,
+  audioProxyURL,
+  SongCard3DRadius,
   startPosition,
   menuMgCardsSize,
-  menuCertenCircleSize,
   endPosition,
   seatRadius,            
   gameAreaRingRadiusIn,  
@@ -28,145 +30,344 @@ import {
   playerMarkOut,
 } from "./constants.js";
 
-import {
-  isUseMouseEnabled
-} from "./Js.js";
-
 import { useVRStore } from './store.js';
+
+//==========================================================================================
+// 通用component ===========================================================================
+//==========================================================================================
+
+// 計算Menu中，角度是否在該曲目的範圍內========================================================
+const isAngleInRange = (angle, rangeL, rangeR) => {
+  const normalizedAngle = ((angle % 360) + 360) % 360;
+  const normalizedRangeL = ((rangeL % 360) + 360) % 360;
+  const normalizedRangeR = ((rangeR % 360) + 360) % 360;
+
+  if (normalizedRangeL <= normalizedRangeR) {
+    return normalizedAngle >= normalizedRangeL && normalizedAngle <= normalizedRangeR;
+  }
+
+  return normalizedAngle >= normalizedRangeL || normalizedAngle <= normalizedRangeR;
+};
 
 //==========================================================================================
 // Menu 0===================================================================================
 //==========================================================================================
-export const Roundabout =() =>{
-  return(
-    <div className="roundabout-container">
-      <svg className="roundabout" viewBox="0 0 100 100">
-        <path d="M 50 5 A 45 45 0 0 1 81.82 18.18" fill="none" stroke="white" strokeWidth="0.1" />
-        {/* 長弧相反側 */}
-        <path d="M 50 5 A 45 45 0 0 1 81.82 18.18" fill="none" stroke="white" strokeWidth="0.1" transform="rotate(180 50 50)" />
-        {/* 短弧，半徑較小 */}
-        <path d="M 53.75 7.16 A 43 43 0 0 1 77.64 17.06" fill="none" stroke="white" strokeWidth="0.1" />
-         {/* 短弧相反側 */}
-        <path d="M 53.75 7.16 A 43 43 0 0 1 77.64 17.06" fill="none" stroke="white" strokeWidth="0.1" transform="rotate(180 50 50)"/>
-      </svg>
-    </div>
-  );
-}
 
-export const MenuComponent = ({ mouseXD , getsongs , setTouch , setChose , setStatus , getPage , songTotal , pageTotal}) => {
+// 旋轉圓環 
+export const Roundabout = ( ) => {
+  const groupRef = useRef()
 
-  const pageLimit = 8;
-  const pageStartIndex = getPage * pageLimit; // 開始索引
-  const pageEndIndex = pageStartIndex + pageLimit; // 結束索引
-  const pageNow = getsongs.slice(pageStartIndex, pageEndIndex); // 當頁切出來的歌單
-  console.log(mouseXD);
-  // console.log({
-  //   "共有幾首歌":songTotal,
-  //   "共有幾頁":pageTotal,
-  //   "現在在第幾頁":getPage,
-  //   "這頁起始數字":pageStartIndex,
-  //   "這頁結束數字":pageEndIndex,
-  //   "當頁有幾首歌":pageNow.length, 
-  //   "當頁的資料內容":pageNow                     
-  // }
-  // );
+  useFrame((state, delta) => {
+    if (groupRef.current) {
+      groupRef.current.rotation.z += delta * 0.5
+    }
+  })
+
+  const outerLen = Math.PI / 3 // 外圈弧長 60 度
+  const innerLen = Math.PI / 4 // 內圈弧長 45 度
 
   return (
-      <div className="Menu">
-          {pageNow.map((ID , index) => {
-
-            //極座標轉換
-            // const angle = (index / total) * 2 * Math.PI;
-            // const radius = 200; 
-
-            // const x = radius * Math.cos(angle);
-            // const y = radius * Math.sin(angle);
-            const totalInThisPage = pageNow.length; //這頁有幾首歌
-            const angle = (index / totalInThisPage)*360;  // 這頁的x首歌平分角度
-
-            return(
-          <div 
-            key={ID.id}
-            className='mgCardsWrapper' // 旋轉定位
-            // style={{ '--top': `calc(50% + ${y}px)`,  '--left': `calc(50% + ${x}px)`}}
-            style={{'--angle':`${angle}deg`}}
-          >
-            {/* 歌曲卡片 */}
-            <Avatar className="mgCards" 
-                  size={menuMgCardsSize}
-                  title={ID.name} 
-                  variant="borderless"
-                  src={ID.img}
-                  onMouseEnter={() => setTouch(ID)}  //滑鼠摸到
-                  onClick={() => {                   //滑鼠點擊
-                    setChose(ID);
-                    setStatus(2);
-                  }}
-            />
-        
-            {/* 中心圓圈 */}
-            <Avatar className='certenCircle'
-                  size={menuCertenCircleSize}
-                  title={ID.name} 
-                  variant="borderless"
-            />
-
-            <p className=' MenuMusicName'> {ID.name} </p>
-            <p className=' MenuMusicLevel'> {ID.level} </p>
-
-          </div>
-          )})}
-      </div>
-  );
+    <group ref={groupRef} position={[0, 0, 0]}>=
+      <mesh>
+        <ringGeometry args={[gameAreaRingRadiusIn, gameAreaRingRadiusIn + 0.03, 30, 1, -outerLen / 2, outerLen]} />
+        <meshBasicMaterial color="rgb(205, 205, 209)" side={2} />
+      </mesh>
+=
+      <mesh>
+        <ringGeometry args={[gameAreaRingRadiusIn, gameAreaRingRadiusIn + 0.03, 30, 1, Math.PI - outerLen / 2, outerLen]} />
+        <meshBasicMaterial color="rgb(205, 205, 209)" side={2} />
+      </mesh>
+=
+      <mesh>
+        <ringGeometry args={[gameAreaRingRadiusIn - 0.5, gameAreaRingRadiusIn - 0.47, 30, 1, -innerLen / 2, innerLen]} />
+        <meshBasicMaterial color="rgb(205, 205, 209)" side={2} />
+      </mesh>
+=
+      <mesh>
+        <ringGeometry args={[gameAreaRingRadiusIn - 0.5, gameAreaRingRadiusIn - 0.47, 30, 1, Math.PI - innerLen / 2, innerLen]} />
+        <meshBasicMaterial color="rgb(205, 205, 209)" side={2} />
+      </mesh>
+    </group>
+  )
 }
 
+// 曲目Card group 
+const SongCard3D = ({ song, angle, isInRange, setTouch, setChose, setStatus, setStop, getChose, setNoteCSVData, setMusicTimeMs }) => {
+  const texture = useTexture(song?.img ? `${imageProxyURL}?url=${encodeURIComponent(song.img)}` : undefined);
+  const imageRadius = menuMgCardsSize * 0.88;
+
+  const cardGroupRef = useRef();  // 選中的歌曲放大
+  const ringRef = useRef();       // 選中的歌曲圓環
+
+  const [isPoint, setIsPoint] = useState(false);  //是否指到歌曲
+
+  // 選中的歌曲放大
+  useFrame((state, delta) => {
+    if (!cardGroupRef.current) return;
+    const targetScale = isInRange ? 1.3 : 1.0;
+    cardGroupRef.current.scale.x = THREE.MathUtils.damp(cardGroupRef.current.scale.x, targetScale, 20, delta);
+    cardGroupRef.current.scale.y = THREE.MathUtils.damp(cardGroupRef.current.scale.y, targetScale, 20, delta);
+  });
+
+  // 選中的歌曲圓環：旋轉 + 縮放特效
+  useFrame((state, delta) => {
+    if (!ringRef.current) return;
+
+    //  圓環自轉
+    ringRef.current.rotation.z += delta * 0.5;
+
+    //  圓環縮放
+    const targetScale = isInRange ? 1.5 : 0.0;
+    ringRef.current.scale.x = THREE.MathUtils.damp(ringRef.current.scale.x, targetScale, 20, delta);
+    ringRef.current.scale.y = THREE.MathUtils.damp(ringRef.current.scale.y, targetScale, 20, delta);
+  });
+
+  return (
+    <group rotation={[0, 0, THREE.MathUtils.degToRad(angle)]}>
+      <group
+        ref={cardGroupRef}
+        position={[SongCard3DRadius, 0, 0]}
+        rotation={[0, 0, -Math.PI / 2]}
+      >
+        {/* 圓環旋轉與縮放 */}
+        <group ref={ringRef} position={[0, 0, 0.5]}>
+          <mesh>
+            <ringGeometry args={[1, 1.01, 30, 1, 0, 1.5]} />
+            <meshBasicMaterial color="rgb(255, 255, 255)" side={THREE.DoubleSide} />
+          </mesh>
+          <mesh>
+            <ringGeometry args={[1, 1.01, 30, 1, Math.PI, 1.5]}/>
+            <meshBasicMaterial color="rgb(255, 255, 255)" side={THREE.DoubleSide} />
+          </mesh>
+        </group>
+
+        {/* 外圈圓 */}
+        <mesh
+          position={[0, 0, 0]}
+          onPointerDown={() => {
+            if (isInRange) {
+              setStop(true);
+
+              if (getChose?.id === song.id) {
+                setNoteCSVData([]);
+                setMusicTimeMs(0);
+                setChose(null);
+                setStatus(1);
+                requestAnimationFrame(() => {
+                  setChose(song);
+                  setStatus(1);
+                });
+                return;
+              }
+
+              setNoteCSVData([]);
+              setMusicTimeMs(0);
+              setChose(song);
+              setStatus(1);
+            }
+          }}
+          onPointerEnter={() => {
+              setTouch(song) 
+
+              if (isInRange) {
+                setIsPoint(true);
+              }
+            }
+          }
+          onPointerLeave={() => setIsPoint(false)} 
+        >
+          <circleGeometry args={[menuMgCardsSize, 40]} />
+          <meshStandardMaterial color={isInRange && isPoint ? '#9b0000' : isInRange  ? '#f5f200'  : '#111111'}
+            emissive={ isInRange && isPoint ? '#9b0000' : isInRange ? '#f5f200' : '#222222'}
+            emissiveIntensity={isInRange ? (isPoint  ? 1.5 : 1.1) : 0.2}
+            metalness={0.1}
+            roughness={0.5}
+          />
+        </mesh>
+        {/* 灰色邊框 */}
+        <mesh position={[0, 0, 0.04]}>
+          <ringGeometry args={[imageRadius * 0.96, imageRadius * 1.06, 30]} />
+          <meshBasicMaterial color={'#a0a0a0'} transparent opacity={isInRange ? 1 : 0.28} side={THREE.DoubleSide} />
+        </mesh>
+
+        {/* 圖片 */}
+        <mesh position={[0, 0, 0.02]}>
+          <circleGeometry args={[imageRadius, 40]} />
+          <meshBasicMaterial
+            map={texture || null}
+            color={texture ? '#ffffff' : '#0c0c0c'}
+            transparent
+            alphaTest={0.05}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+
+        <Text
+          position={[0, -1.5, 0.01]}
+          fontSize={0.18}
+          color="white"
+          anchorX="center"
+          anchorY="middle"
+          maxWidth={1.5}
+          textAlign="center"
+        >
+          {song.name}
+        </Text>
+
+        <Text
+          position={[0, 1.5, 0.01]}
+          fontSize={0.18}
+          color="white"
+          anchorX="center"
+          anchorY="middle"
+        >
+          {song.level}
+        </Text>
+      </group>
+    </group>
+  );
+};
+
+// 選歌機制 + SongCard3D 渲染
+export const MenuComponent = ({ getsongs, setTouch, setChose, getTouch, getChose, setStatus, getPage, getUseMouse, mouseXD, setStop, setNoteCSVData, setMusicTimeMs }) => {
+
+  const pageLimit = 8;
+  const pageStartIndex = getPage * pageLimit;
+  const pageEndIndex = pageStartIndex + pageLimit;
+  const pageNow = useMemo(() => 
+    getsongs.slice(pageStartIndex, pageEndIndex),
+    [getsongs, pageStartIndex, pageEndIndex],
+  );
+
+  const VRangle = useVRStore((state) => state.angleR);
+  const [mouseAngle, setMouseAngle] = useState(mouseXD);
+
+  useEffect(() => {
+    const handleMouseMove = (event) => {
+      setMouseAngle((event.clientX / window.innerWidth) * 360);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
+  const vrMenuAngle = ((VRangle * (180 / Math.PI)) + 360) % 360;
+  const whichAngleUse = getUseMouse ? vrMenuAngle : mouseAngle;
+
+
+  useEffect(() => {
+    const matchedSong = pageNow.find((song, index) => {
+      const angle = (index / pageNow.length) * 360;
+      return isAngleInRange(whichAngleUse, angle - 360 / 16, angle + 360 / 16);
+    });
+
+    if (matchedSong) {
+      setTouch((currentSong) => currentSong?.id === matchedSong.id ? currentSong : matchedSong);
+    }
+  }, [pageNow, whichAngleUse, setTouch]);
+
+  return (
+    <group position={[0, 0, -1.5]}>
+      {pageNow.map((ID, index) => {
+        const totalInThisPage = pageNow.length;
+        const angle = (index / totalInThisPage) * 360;
+        const rangeR = angle + 360 / 16;
+        const rangeL = angle - 360 / 16;
+        const isInRange = isAngleInRange(whichAngleUse, rangeL, rangeR);
+        
+        return (
+          <SongCard3D
+            key={ID.id}
+            song={ID}
+            angle={angle}
+            isInRange={isInRange}
+            setTouch={setTouch}
+            getTouch={getTouch}
+            setChose={setChose}
+            getChose={getChose}
+            setStatus={setStatus}
+            setStop={setStop}
+            setNoteCSVData={setNoteCSVData}
+            setMusicTimeMs={setMusicTimeMs}
+          />
+        );
+      })}
+    </group>
+  );
+};
+
+// 換頁按鈕
 export const MenuPageSwitchBottom = ({ setPage , getPage , pageTotal }) => {
+
+  const [isTouchL , setIsTouchL] = useState(false);
+  const [isTouchR , setIsTouchR] = useState(false);
 
   const isFirstPage = getPage <= 0;
   const isLastPage = (getPage + 1) >= pageTotal;
 
-  return (
-    <>
-      <div className="MenuPageSwitchBottomLeft">
-          {/* 上一頁按鈕 */}
-          {/* getPage 從第0開始，但頁數從1開始 */}
-          <CaretLeftFilled 
-            disabled={getPage  <= 0}
-            onClick={() => {if (!isFirstPage) setPage(prev => prev - 1);}}
-          />
-      </div>
+  const colorL = isTouchL ? 'white' : 'rgb(150,150,150)' ;
+  const colorR = isTouchR ? 'white' : 'rgb(150,150,150)' ;
 
-      <div className="MenuPageSwitchBottomRight">
-          {/* 下一頁按鈕 */}
-          <CaretRightFilled
-            disabled={(getPage+1) == pageTotal}
-            onClick={() => {if (!isLastPage) setPage(prev => prev + 1);}}
-          />
-      </div>
-    </>
+  return (
+    <group position={[0, 0, 0]}>
+      <Text
+        position={[-5.0, 0, 0]}
+        fontSize={0.55}
+        color={isFirstPage ? 'rgb(150, 0, 0)' : colorL}
+        anchorX="center"
+        anchorY="middle"
+        onPointerEnter={() => setIsTouchL(true)}
+        onPointerLeave={() => setIsTouchL(false)} 
+        onPointerDown={() => { if (!isFirstPage) setPage(prev => prev - 1); }}
+      >
+        ◀
+      </Text>
+
+      <Text
+        position={[5.0, 0, 0]}
+        fontSize={0.55}
+        color={isLastPage ? 'rgb(150, 0, 0)' : colorR}
+        anchorX="center"
+        anchorY="middle"
+        onPointerEnter={() => setIsTouchR(true)}
+        onPointerLeave={() => setIsTouchR(false)} 
+        onPointerDown={() => { if (!isLastPage) setPage(prev => prev + 1); }}
+      >
+        ▶
+      </Text>
+    </group>
   );
 }
 
-export const MenuMusicComponent = ({ getTouch , getChose}) => {
+// 音樂撥放機制
+export const MenuMusicComponent = ({ getTouch , getStatus}) => {
     const musicTouched = useRef(null);
-    useEffect(() => {
-        if (getChose && musicTouched.current) {
-        musicTouched.current.pause(); 
-        musicTouched.current.currentTime = 0; 
-        }
-    }, [getChose]);
+    const localSrc = getTouch?.mp3 || '';
 
-  return (
+    useEffect(() => {
+      if (!musicTouched.current) return;
+
+      if (getStatus !== 0 || !getTouch?.mp3) {
+        musicTouched.current.pause();
+        musicTouched.current.currentTime = 0;
+        return;
+      }
+
+      musicTouched.current.currentTime = 0;
+      musicTouched.current.play().catch(() => {});
+    }, [getTouch?.mp3, getStatus]);
+
+    return (
     <>
       {/* src 帶入音檔路徑  autoPlay 載入就自動播放  controls顯示播放控制條*/}
       <audio 
             style={{ position: 'absolute' }}
-            src={getTouch.mp3} 
+            src={localSrc}
              ref={musicTouched}
              loop
              autoPlay 
              onLoadedMetadata={(e) => {
-                // 當音訊資料載入完成後，將當前播放時間指向指定的秒數
+                // 當音訊資料載入完成後，將當前播放時間指向 specified 的秒數
                 e.currentTarget.currentTime = 40; 
         }}
       />
@@ -181,10 +382,10 @@ export const MenuMusicComponent = ({ getTouch , getChose}) => {
 //==========================================================================================
 
 /* 把getChose的樂曲資料，抓csv資料並做分類處裡，並丟進setNoteCSVData */
-export const ProcessChoseCSVData = ({ getChose , setNoteCSVData }) => {
+export const ProcessChoseCSVData = ({ getChose , setNoteCSVData , setGameStarPosition }) => {
   useEffect(() =>{
     const loadCsv = async () => {
-      if(!getChose)return[];
+      if(!getChose) return [];
 
       try {
         const response = await fetch(getChose.csv);
@@ -205,9 +406,12 @@ export const ProcessChoseCSVData = ({ getChose , setNoteCSVData }) => {
         // 讀取第一行的整數數字 
         const firstLineInt = rows[0][0];
         console.log("First line integer:", firstLineInt);
+        //第二行讀取第一個音符的land
+        const secondLineLand = rows[1];
+        console.log("Second line land:", secondLineLand);
 
-        // 從第二行開始讀取資料 (i = 1)
-        for (let i = 1; i < rows.length; i++) {
+        // 從第三行開始讀取資料 (i = 2)
+        for (let i = 2; i < rows.length; i++) {
           const row = rows[i];
           const type = row[0]; // 第一欄：類型
 
@@ -240,7 +444,7 @@ export const ProcessChoseCSVData = ({ getChose , setNoteCSVData }) => {
             noteSpeed: 0.05,
             startPosition: startPosition,
             endPosition: endPosition,
-            lifePosition: endPosition - 0.1,
+            lifePosition: endPosition - 0.2,
             notePosition: 5,
             segmentStates: Array.from({ length: density + 1 }, () => ({
               isJudged: false,
@@ -264,7 +468,7 @@ export const ProcessChoseCSVData = ({ getChose , setNoteCSVData }) => {
       });
 
         setNoteCSVData(processedNotes); // 把處理好的資料存進 State
-        console.log(processedNotes);
+        setGameStarPosition(secondLineLand); // 把第二行的資料存進 State
         
       }catch(error) {
 
@@ -280,9 +484,12 @@ export const ProcessChoseCSVData = ({ getChose , setNoteCSVData }) => {
 
 export const ShowChoseSong = ({ getChose , setStatus}) => {
   const [getTime, setTime] = useState(5); 
+  const albumTexture = useTexture(getChose?.img ? `${imageProxyURL}?url=${encodeURIComponent(getChose.img)}` : undefined);
+
+  
 
   useEffect(() => {
-    let interval = null;   //interval=間隔
+    let interval = null;
     
     if (getTime > 0) {
       interval = setInterval(() => {
@@ -292,22 +499,30 @@ export const ShowChoseSong = ({ getChose , setStatus}) => {
       setStatus(2);
     }
 
-    // 清除計時器
     return () => clearInterval(interval);
-  }, [getTime]);
+  }, [getTime, setStatus]);
 
   return (
-    <div className="showChoseSongBack">
-      <div className='showChoseSongEdge'>
-        <div className='showChoseSongNameTop'>{getChose.name}</div>
-        <div className='showChoseSongNameBottom'>{getChose.name}</div>
-        <div className="showChoseSong">
-          <div className="showChoseSongBack_Circle_0"></div>
-          <div className="showChoseSongBack_Circle_1"></div>
-          <Avatar size={500} src={getChose.img} />
-        </div>
-      </div>
-    </div>
+    <group position={[0, 0, -2]}>
+  
+      <mesh position={[0, 0, -0.2]}>
+        <circleGeometry args={[2.9, 64]} />
+        <meshStandardMaterial color="#47484a" emissive="#47484a" emissiveIntensity={0.6} />
+      </mesh>
+
+      <mesh position={[0, 0, 0]}>
+        <circleGeometry args={[2.4, 64]} />
+        <meshStandardMaterial color="#0d0d0d" />
+      </mesh>
+
+      <mesh position={[0, 0, 0.1]}>
+        <circleGeometry args={[1.55, 64]} />
+        <meshBasicMaterial map={albumTexture || null} color={albumTexture ? '#ffffff' : '#262626'} />
+      </mesh>
+
+      <ShowGameSongText shouldRotate={false} whichGet={257} offset={0} r={-3.2} a={0.1} offset2={Math.PI} textSize={0.6}/>
+
+    </group>
   );
 };
 
@@ -326,7 +541,7 @@ export const Box = ({ position, getJudgeStatus , getTotalCombo}) => {
       {/* 環形 座位 */}
       <mesh>
         <ringGeometry args={[seatRingRadiusIn, seatRingRadiusOut, 64]} /> 
-        <meshStandardMaterial color="rgb(113, 115, 119)" transparent={true} />
+        <meshStandardMaterial color="rgb(255, 255, 255)" transparent={true} />
       </mesh>
 
       {/* 圓形 座位 */}
@@ -345,32 +560,46 @@ export const Box = ({ position, getJudgeStatus , getTotalCombo}) => {
   );
 };
 
-export const GameMusicComponent = ({ getChose, setMusicTimeMs, setStatus , getStop , setStop}) => {
+export const GameMusicComponent = ({ getChose, setMusicTimeMs, onTimeUpdate, setStatus , getStop , setStop , getStatus}) => {
   const musicChose = useRef(null);
-  
+  console.log(getStatus);
+  useEffect(() => {
+    if (!musicChose.current || !getChose?.mp3 ) return;
+    if (getStatus == 2 || getStatus == 2.5) return;
 
-  // 根據 getplay 的改變來控制播放與暫停
-useEffect(() => {
-    if (!musicChose.current) return;
+    musicChose.current.pause();
+    musicChose.current.currentTime = 0;
+  }, [getChose?.mp3, getStatus]);
+
+  useEffect(() => {
+    if (!musicChose.current || !getChose?.mp3) return;
+
+      musicChose.current.pause();
 
     if (getStop) {
-      musicChose.current.play();
-    } else {
       musicChose.current.pause();
+    } else  {
+      musicChose.current.play().catch(() => {
+        console.warn('Audio autoplay blocked; user interaction is required to start playback.');
+      });
     }
-  }, [getStop]);
+  }, [getChose?.mp3, getStop, getStatus]);
 
-  // 處理時間同步
   useEffect(() => {
     if (!musicChose.current) return;
 
     let rafId;
 
     const tick = () => {
-      // 只有在播放狀態（且音樂不是暫停中）才更新時間，優化效能
       if (musicChose.current && !musicChose.current.paused) {
-        const now = musicChose.current.currentTime * 1000;
-        setMusicTimeMs(now);
+        const nowSeconds = musicChose.current.currentTime;
+        const nowMs = Math.floor(nowSeconds * 1000);
+
+        if (typeof onTimeUpdate === 'function') {
+          onTimeUpdate(nowSeconds);
+        } else {
+          setMusicTimeMs(nowMs);
+        }
       }
 
       rafId = requestAnimationFrame(tick);
@@ -379,31 +608,77 @@ useEffect(() => {
     rafId = requestAnimationFrame(tick);
 
     return () => cancelAnimationFrame(rafId);
-  }, [setMusicTimeMs]); 
+  }, [onTimeUpdate, setMusicTimeMs]);
 
-  if (!getChose.mp3) return null;
+
+  if (!getChose?.mp3) return null;
+
+  const localSrc = getChose?.mp3 || undefined;
 
   return (
     <>
       <audio 
         style={{ top: '50px', position: 'relative' }}
         ref={musicChose}
-        src={getChose.mp3}
+        src={localSrc}
         autoPlay
-        onPlay={() => setStop(true)}   // 確保 DOM 實際播放時，state 是 true
-        onPause={() => setStop(false)} // 確保 DOM 實際暫停時，state 是 false
-        onEnded={() => setStatus(3)}   // 回到選歌介面
+        onCanPlay={() => {
+          if (!getStop) {
+            musicChose.current?.play().catch(() => {});
+          }
+        }}
+        onPlay={() => setStop(false)}
+        onPause={() => setStop(true)}
+        onEnded={() => setStatus(3)}
       />
     </>
   );
 }
 
-export const PlayerMark = ({ getUseMouse }) => {
+export const GameStar = ({ getGameStarPosition }) => {
+
+  const land = getGameStarPosition.land;
+
+  console.log(getGameStarPosition);
+
+  const groupRef = useRef(null);
+  const angle = land * (Math.PI / 8) + Math.PI / 16;
+  const radius = gameAreaRingRadiusIn + 0.1;
+
+  useFrame((state, delta) => {
+    if (!groupRef.current) return;
+
+    // 計時變數
+    groupRef.current.userData.anima = (groupRef.current.userData.anima || 0) + delta * 1;
+    if (groupRef.current.userData.anima > 1) groupRef.current.userData.anima = 0;
+
+    const progress = groupRef.current.userData.anima; // 0 ~ 1
+
+    const s = 1 + progress * 0.5;
+    groupRef.current.translateZ(s);
+  });
+
+  return (
+    <group ref={groupRef} position={[0, 0, 0]} rotation={[0, 0, angle]}>
+      <mesh>
+        <ringGeometry args={[radius, radius+0.2, 32]} />
+        <meshStandardMaterial
+          color="rgb(255, 236, 33)"
+          emissive="rgb(255, 236, 33)"
+          emissiveIntensity={3}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+    </group>
+  );
+};
+
+export const PlayerMark = ({ getUseMouse , mouseXR}) => {
   const arcLong = (Math.PI / 16) + 0.5
   const halfArcLong = arcLong/2
 
-  const angle = useVRStore((state) => state.angleR);
-
+  const angleVR = useVRStore((state) => state.angleR);
+  const angle = getUseMouse ? angleVR : mouseXR; // 如果 getUseMouse 為 true，使用 VR 的角度，否則使用 0
   return (
     <mesh rotation={[0, 0, angle]} position={[0, 0, 0]}>
       <ringGeometry args={[playerMarkIn, playerMarkOut, 32, 1, -halfArcLong, arcLong ]} />
@@ -414,14 +689,18 @@ export const PlayerMark = ({ getUseMouse }) => {
 
 export const PuaseButtom = ({ getStop, setStop }) => {
   return (
-    <div className="puaseButtom">
-      <Button
-        type="text"
-        onClick={() => setStop(prev => !prev)}
+    <group position={[0, 0, 0.01]}>
+      <Text
+        position={[0, 0, 0]}
+        fontSize={0.32}
+        color="white"
+        anchorX="center"
+        anchorY="middle"
+        onPointerDown={() => setStop(prev => !prev)}
       >
-        {getStop ? 'Pause' : 'Play'} {/* 讓按鈕文字隨狀態動態改變，方便辨識 */}
-      </Button>
-    </div>
+        {getStop ? 'Resume' : 'Pause'}
+      </Text>
+    </group>
   );
 };
 
@@ -436,20 +715,14 @@ export const JudgeTextComponent = ({ radius = 4.2, getJudgeStatus , getTotalComb
 
   if (!judgeText) return null;
 
-  const chars = judgeText.split(""); // 將字串拆分為單個字元的陣列
-  
-  // 設定每個相鄰字元之間的固定角度間距（可依字體大小微調此數值）
+  const chars = judgeText.split("");
   const angleStep = 0.1; 
 
   return (
     <group>
       {chars.map((char, i) => {
-        // 使用反轉後的索引來計算角度與旋轉
         const reversedIndex = chars.length - 1 - i;
-        // 以整串文字的中心點為基準向兩側展開
-        // (i - (chars.length - 1) / 2) 可以讓奇數或偶數長度的字串都完美置中於 0 度
         const angle = (reversedIndex - (chars.length - 1) / 2) * angleStep;
-        
         const x = Math.cos(angle) * radius;
         const y = Math.sin(angle) * radius;
 
@@ -476,18 +749,13 @@ export const CommboTextComponent = ({ radius = 4.2, getCommbo , getTotalCombo}) 
 
   const chars = String(getCommbo).split("");
   const transparency = useFadeOut(getTotalCombo);
-  
-  // 設定每個相鄰字元之間的固定角度間距（可依需求微調）
   const angleStep = 0.1; 
 
   return (
     <group rotation={[0, 0, Math.PI]}>
       {chars.map((char, i) => {
-        // group 有額外旋轉 Math.PI，因此這裡用反轉索引避免位數左右顛倒
         const reversedIndex = chars.length - 1 - i;
-        // 以整串文字的中心點為基準向兩側展開，個位數時會維持置中
         const angle = (reversedIndex - (chars.length - 1) / 2) * angleStep;
-        
         const x = Math.cos(angle) * radius;
         const y = Math.sin(angle) * radius;
 
@@ -510,50 +778,25 @@ export const CommboTextComponent = ({ radius = 4.2, getCommbo , getTotalCombo}) 
   );
 };
   
-export const BackImg = ({ radius, getChose }) => {
-  const [texture, setTexture] = useState(null);
-  const proxyImageUrl = getChose?.img
-    ? `${imageProxyURL}?url=${encodeURIComponent(getChose.img)}`
-    : null;
-
-    // 1. 建立一個指向 mesh 的 ref
+export const BackImg = ({ getChose }) => {
+  const proxyImageUrl = useTexture(getChose?.img ? `${imageProxyURL}?url=${encodeURIComponent(getChose.img)}` : undefined);
+  
+  // 旋轉
   const meshRef = useRef();
 
-  // 2. 使用 useFrame 讓它每一幀都在旋轉
   useFrame((state, delta) => {
     if (meshRef.current) {
-      meshRef.current.rotation.z += delta * 0.5; // 數值越大轉越快
+      meshRef.current.rotation.z += delta * 0.5; 
     }
   });
 
-  useEffect(() => {
-    if (!proxyImageUrl) return;
-
-    let isCancelled = false;
-    const loader = new THREE.TextureLoader();
-
-    loader.load( proxyImageUrl,(loadedTexture) => {
-        if (isCancelled) return;
-        loadedTexture.colorSpace = THREE.SRGBColorSpace;
-        setTexture(loadedTexture);
-      },undefined,(error) => {
-        if (isCancelled) return;
-        console.warn('BackImg texture load failed:', proxyImageUrl, error);
-        setTexture(null);
-      }
-    );
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [proxyImageUrl]);
 
   return (
       <mesh ref={meshRef} position={[0, 0, -0.1]}> 
-        <circleGeometry args={[radius, 32]} /> 
+        <circleGeometry args={[gameAreaRingRadiusOut, 32]} /> 
         <meshBasicMaterial
-          map={texture || null}
-          color={texture ? '#272727' : '#111111'} 
+          map={proxyImageUrl || null}
+          color={proxyImageUrl ? '#272727' : '#111111'} 
         />
       </mesh>
     );
@@ -563,57 +806,62 @@ export const BackImg = ({ radius, getChose }) => {
 //==========================================================================================
 //分數結算3 =================================================================================
 //==========================================================================================
-export const ShowChoseSongScoresBack = () => {
-    return (
-     <div className="showChoseSongScoresBack">
-      <div className="bigCircle"></div>
-      <div className="seatCircle"></div>
-    </div>
-  );
-}
+
 
 export const ShowChoseSongScoresImg = ({ getChose }) => {
+  const texture = useTexture(getChose?.img ? `${imageProxyURL}?url=${encodeURIComponent(getChose.img)}` : undefined);
+
   return (
-    <div className="showChoseSongScoresImgLayer">
-      <div className='showChoseSongScoresImg'>
-        <Avatar src={getChose.img} />
-      </div>
-    </div>
+    <group position={[0, 1.8, 0.1]}>
+      <mesh>
+        <circleGeometry args={[1.1, 32]} />
+        <meshBasicMaterial map={texture || null} color={texture ? '#ffffff' : '#262626'} />
+      </mesh>
+    </group>
   );
 }
 
-export const ShowGameSongText = ({ className, whichGet, offset, r, a }) => {
 
-  // 將數字轉為字串，再拆分為單個字元的陣列
-  const whichGetCharCount = String(whichGet).split('');
-  const isChinese = /[\u4e00-\u9fa5]/.test(whichGetCharCount.join('')); // 檢查是否包含中文
-  const angleStep = isChinese ? a+0.1 : a; // 中文字元間距較大，英文或數字間距較小
-  const radius = r;
+export const ShowGameSongText = ({ shouldRotate, whichGet, offset , r, a , offset2 , textSize}) => {
+
+  const groupRef = useRef(null);
+
+  const characters = Array.from(String(whichGet ?? ''));
+  const isChinese = /[\u4e00-\u9fa5]/.test(whichGet);
+  const angleStep = isChinese ? a + 0.1 : a;
+
+
+  useFrame((state, delta) => {
+    if (shouldRotate && groupRef.current) {
+      groupRef.current.rotation.z += delta * 0.2;
+    }
+  });
 
   return (
-    <div className={className}>
-      {whichGetCharCount.map((char, i) => {
-
-        const baseAngle =
-          (i - (whichGetCharCount.length - 1) / 2) * angleStep;
-
+    // 3. 綁定 groupRef 到 DOM/Three 節點
+    <group ref={groupRef} position={[0, 0, 0]} rotation={[0, 0, offset2 || 0]}>
+      {characters.map((char, i) => {
+        // 使用傳入的靜態 offset 排列文字弧度
+        const baseAngle = (i - (characters.length - 1) / 2) * angleStep;
         const angle = baseAngle + offset;
-
-        const x = Math.cos(angle) * radius;
-        const y = Math.sin(angle) * radius;
-
-        const rotateAngle =
-          angle - Math.PI / 2 + Math.PI;
+        const x = Math.cos(angle) * r;
+        const y = Math.sin(angle) * r;
 
         return (
-          <div key={`${char}-${i}`} className="scoreChars"
-            style={{'--x': `${x*9}px`, '--y': `${y*9}px`, '--rotate': `${rotateAngle}rad`}}
+          <Text
+            key={`${char}-${i}`}
+            position={[x, y, 0.01]}
+            rotation={[0, 0, angle + Math.PI / 2]}
+            fontSize={textSize}
+            color="white"
+            anchorX="center"
+            anchorY="middle"
           >
             {char}
-          </div>
+          </Text>
         );
       })}
-    </div>
+    </group>
   );
 };
 
@@ -631,14 +879,11 @@ export const VRTracker = () => {
     state.camera.getWorldQuaternion(quaternion);
     rotation.setFromQuaternion(quaternion);
 
-    const angleZD = (rotation.z * 180) / Math.PI;
-    const angleZLimD = ((angleZD % 360) + 360) % 360;
-
     const angleZR = rotation.z;
     const angleZLimR = ((angleZR + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
 
     // 直接更新 Zustand store
-    setAngles(angleZLimD, angleZLimR);
+    setAngles(angleZLimR);
   });
 
   return null;
@@ -679,7 +924,7 @@ export const StatusControl = ({ setStatus }) => {
   return null;
 };
 
-export const SideBar = ({ setUseMouse }) => {
+export const SideBar = ({ setUseMouse , setRotateCanva}) => {
 
   // 是否開啟維修介面================================
   const [open, setOpen] = useState(false);
@@ -695,7 +940,13 @@ export const SideBar = ({ setUseMouse }) => {
   //================================================
     const onChangeUseMouse = checked => {
       if (setUseMouse) { setUseMouse(checked); 
-        console.log(`Use Mouse to control rotation: ${checked}`);
+        console.log(`Use Mouse : ${checked}`);
+      }
+    };
+
+    const onChangeUseRotateCanva = checked => {
+      if (setRotateCanva) { setRotateCanva(checked); 
+        console.log(`Use Rotate Canva : ${checked}`);
       }
     };
 
@@ -710,7 +961,14 @@ export const SideBar = ({ setUseMouse }) => {
         onClose={onClose}
         open={open}
       >
-        <Switch defaultChecked onChange={onChangeUseMouse} />  Use Mouse to control rotation
+        <div>
+          <Switch defaultChecked={false} onChange={onChangeUseMouse} />  Use VR to control  rotation
+        </div>
+        
+        <div>
+          <Switch defaultChecked={false} onChange={onChangeUseRotateCanva} />  Use Canva to ground 
+        </div>
+        
       </Drawer>
     </>
   );

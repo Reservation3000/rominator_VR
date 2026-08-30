@@ -1,5 +1,5 @@
 import { Canvas , useFrame } from "@react-three/fiber";
-import { XR, createXRStore , XRButton} from '@react-three/xr';
+import { XR, createXRStore } from '@react-three/xr';
 import { Stats } from "@react-three/drei";
 import { Slider } from 'antd';
 import { Card, Col, Row } from 'antd';
@@ -24,18 +24,19 @@ import {
   PuaseButtom,
   JudgeTextComponent,
   CommboTextComponent,
-  ShowChoseSongScoresBack,
   ShowGameSongText,
   ShowChoseSongScoresImg,
   StatusControl,
   VRTracker,
-  SideBar
+  SideBar,
+  GameStar 
 } from "./component.jsx";
 
 import { 
   MouseTrackerR,
   MouseTrackerD,
 } from "./Js.js"
+
 
 import { 
   LogicOfNotes,
@@ -47,7 +48,12 @@ import {
 //   serverURL 
 //  } from "./constants.js";
 
-const xrStore = createXRStore();
+const xrStore = createXRStore({
+  originReferenceSpace: 'local-floor', // 讓系統以地面為基準計算高度
+  handTracking: true, // 確保啟用手部追蹤
+  hand: true,        // 啟用手部模型與捏合手勢射線
+  controller: true,  // 啟用控制器
+});
 
 //===============================
 //  App 
@@ -57,6 +63,7 @@ function App() {
 
   {/*fix*/}
   const [getUseMouse, setUseMouse] = useState(false); // 是否使用滑鼠控制旋轉
+  const [getRotateCanva , setRotateCanva] = useState(false); //是否將畫布貼到地面
 
 
   const [getStatus, setStatus] = useState(0);     // 0歌曲選單、1選了歌曲、2遊玩、2.5暫停
@@ -67,6 +74,7 @@ function App() {
   const [getNoteCSVData, setNoteCSVData] = useState([]); //存入處理好的歌曲資料
   const [getMusicTimeMs, setMusicTimeMs] = useState(0);    //現在的樂曲進行時間
   const [getStop, setStop] = useState(true);       // 遊戲是否暫停
+  const [getGameStarPosition, setGameStarPosition] = useState(0); // 遊戲開始位置
 
   const [getCommbo, setCommbo] = useState(0);
   const [getPerfect, setPerfect] = useState(0);
@@ -91,26 +99,21 @@ function App() {
   const onlyDrag = getNoteCSVData.filter((note) => note.type === 'drag');
   
 
-  // 讀取伺服器，抓歌曲資料，並存入 getsongs============================
-  // useEffect(() => {
-  //   fetch(serverURL)
-  //     .then(res => res.json())
-  //     .then(data =>{
-  //       console.log(data);
-  //       setSongs(data);
-  //       })
-  //     .catch(err => console.log(err));
-  // },[])
-
-
-  // 讀取本地歌曲資料，並存入歌曲狀態===================================
+  // 讀取歌曲資料(本地)
   useEffect(() => {
-    fetch('/VRsongData.json')
-      .then((res) => res.json())
-      .then((data) => {
-        setSongs(data);
-      })
-      .catch((err) => console.error('讀取 JSON 失敗:', err));
+    const loadSongs = async () => {
+        try {
+          const localRes = await fetch('/VRsongData.json');
+          if (!localRes.ok) throw new Error(`HTTP ${localRes.status}`);
+          const localData = await localRes.json();
+          setSongs(Array.isArray(localData) ? localData : []);
+        } catch (localErr) {
+          console.error('localErr:', localErr);
+          setSongs([]);
+        }
+    };
+
+    loadSongs();
   }, []);
 
    
@@ -119,145 +122,145 @@ function App() {
 
   const hitPresent = Math.round(((getPerfect + getGood) / getTotalCombo) * 100) ;
   
-
+  const rotateCanvaX = getRotateCanva ? -Math.PI / 2 : 0;
   //===============================================================
   // return =======================================================
   //===============================================================
   return (
     <>
-    <XRButton store={xrStore} mode="immersive-vr" />
+      <MenuMusicComponent getTouch={getTouch} getChose={getChose} getStatus={getStatus} />
+      <GameMusicComponent
+        getChose={getChose}
+        setMusicTimeMs={setMusicTimeMs}
+        onTimeUpdate={getOnTimeUpdate}
+        setStatus={setStatus}
+        getStop={getStop}
+        setStop={setStop}
+        getStatus={getStatus}
+      />
 
-    <SideBar setUseMouse={setUseMouse}/>
+      <Canvas gl={{ toneMappingExposure: 1 }}>
+        <XR store={xrStore}>
+          <OrbitControls />
+          <StatusControl setStatus={setStatus} />
+          <VRTracker setAngleD={setAngleD} setAngleR={setAngleR} />
+          <group className="canva" position={[0, 0, 0]} rotation={[rotateCanvaX, 0, 0]}>
+            {(getStatus === 0) && (
+              <>
+                <Roundabout />
+                <MenuComponent
+                  mouseXD={mouseXD}
+                  getUseMouse={getUseMouse}
+                  getsongs={getsongs}
+                  setTouch={setTouch}
+                  getTouch={getTouch}
+                  getChose={getChose}
+                  setChose={setChose}
+                  setStatus={setStatus}
+                  setStop={setStop}
+                  setPage={setPage}
+                  getPage={getPage}
+                  pageTotal={pageTotal}
+                  setNoteCSVData={setNoteCSVData}
+                  setMusicTimeMs={setMusicTimeMs}
+                />
+                <MenuPageSwitchBottom setPage={setPage} getPage={getPage} pageTotal={pageTotal} />
+              </>
+            )}
 
-    <Canvas  gl={{ toneMappingExposure: 1 }}>
-      <XR store={xrStore}>
-        <StatusControl setStatus={setStatus} />
-        <VRTracker  setAngleD={setAngleD} setAngleR={setAngleR}/>
-
-        <Html position={[0, -1, 0]} transform rotation={[-Math.PI / 2, 0, 0]}>
-          {(getStatus === 0) && (
-            <>
-              <div className="MenuContainer">
-                <MenuMusicComponent getTouch={getTouch} getChose={getChose} />  {/* 選歌表單中，觸碰撥放音樂的邏輯 */}
-                <MenuComponent  mouseXD={mouseXD}
-                                getsongs={getsongs} 
-                                setTouch ={setTouch} 
-                                setChose={setChose} 
-                                setStatus={setStatus} 
-                                setPage={setPage} 
-                                getPage={getPage} 
-                                pageTotal={pageTotal}/> 
-                {/* 選歌表單中，取得所有音樂、觸碰卡片、選擇卡片的邏輯 */}
-                <MenuPageSwitchBottom setPage={setPage} getPage={getPage} pageTotal={pageTotal}/>
-                <Roundabout/>
-              </div>
-            </>
-        )}
-
-          {(getStatus === 1) && (
-            <>
+            {(getStatus === 1) && (
               <ShowChoseSong getChose={getChose} setStatus={setStatus} />
-            </>
-          )}
+            )}
 
-          {(getStatus === 3) && (
-            <>
-              {/*環*/}
-              <Roundabout/>
-              {/* 背景 */}
-              <ShowChoseSongScoresBack getChose={getChose}/>
+            {(getStatus === 3) && (
+              <>
+                <Roundabout />
+                <Box key={`box-${getTotalCombo}`} getJudgeStatus={getJudgeStatus} getTotalCombo={getTotalCombo} />
 
-              <div className="ShowGameSongContainer">
-                {/* 分數 */}
-                <ShowGameSongText whichGet={getPerfect} offset={-0.7} r={30} a={0.14}/>
-                <ShowGameSongText whichGet={getGood} offset={0.1} r={30} a={0.14}/>
-                <ShowGameSongText whichGet={getMiss} offset={0.9} r={30} a={0.14}/>
-                <ShowGameSongText whichGet={getCommbo} offset={2.4} r={30} a={0.14}/>
-                <ShowGameSongText whichGet={hitPresent} offset={3.6} r={30} a={0.14}/>
+                <ShowGameSongText shouldRotate={false} whichGet={getPerfect} offset={-0.7} r={2.6} a={0.1} offset2={0} textSize={0.32}/>
+                <ShowGameSongText shouldRotate={false} whichGet={getGood} offset={0.1} r={2.6} a={0.1} offset2={0} textSize={0.32}/>
+                <ShowGameSongText shouldRotate={false} whichGet={getMiss} offset={0.9} r={2.6} a={0.1} offset2={0} textSize={0.32}/>
+                <ShowGameSongText shouldRotate={false} whichGet={getCommbo} offset={3.7} r={2.6} a={0.1} offset2={0} textSize={0.32}/>
+                <ShowGameSongText shouldRotate={false} whichGet={hitPresent} offset={2.6} r={2.6} a={0.1} offset2={0} textSize={0.32}/>
 
-                {/* 分數標題 */}
-                <ShowGameSongText whichGet={"PREFECT"} offset={-0.7} r={35} a={0.1}/>
-                <ShowGameSongText whichGet={"GOOD"} offset={0.1} r={35} a={0.1}/>
-                <ShowGameSongText whichGet={"MISS"} offset={0.9} r={35} a={0.1}/>
-                <ShowGameSongText whichGet={"MAXCOMMBO"} offset={2.4} r={35} a={0.1}/>
-                <ShowGameSongText whichGet={"HIT%"} offset={3.6} r={35} a={0.1}/>
+                <ShowGameSongText shouldRotate={false} whichGet={'PREFECT'} offset={-0.7} r={3.2} a={0.1} offset2={0} textSize={0.32}/>
+                <ShowGameSongText shouldRotate={false} whichGet={'GOOD'} offset={0.1} r={3.2} a={0.1} offset2={0} textSize={0.32}/>
+                <ShowGameSongText shouldRotate={false} whichGet={'MISS'} offset={0.9} r={3.2} a={0.1} offset2={0} textSize={0.32}/>
+                <ShowGameSongText shouldRotate={false} whichGet={'MAXCOMMBO'} offset={3.7} r={3.2} a={0.1} offset2={0} textSize={0.32}/>
+                <ShowGameSongText shouldRotate={false} whichGet={'HIT%'} offset={2.6} r={3.2} a={0.1} offset2={0} textSize={0.32}/>
 
-                {/* 曲名 */}
-                <ShowGameSongText className={"ShowGameSongTextName"} whichGet={getChose.name} offset={0} r={24} a={0.1}/>
-                <ShowGameSongText className={"ShowGameSongTextName"} whichGet={getChose.name} offset={Math.PI} r={24} a={0.1}/>
-              
-                {/* 圖片 */}
-                <ShowChoseSongScoresImg getChose={getChose}/>
-              </div>
-            </>
-          )}
-        </Html>
+                <ShowGameSongText shouldRotate={true} whichGet={getChose.name} offset={0} r={1.6} a={0.1} offset2={0} textSize={0.32}/>
+                <ShowGameSongText shouldRotate={true} whichGet={getChose.name} offset={0} r={1.6} a={0.1} offset2={Math.PI} textSize={0.32}/>
 
-        
+                <ShowChoseSongScoresImg getChose={getChose} />
+              </>
+            )}
 
-          {(getStatus === 2 ) && (
-            <>
-            <ProcessChoseCSVData  getChose={getChose} setNoteCSVData={setNoteCSVData}/>
-            
-            <group className = "canva" position={[0,0,0]} rotation={[-Math.PI / 2, 0, 0]}> 
-                  < OrbitControls/>
+            {(getStatus === 2) && (
+              <group>
+                <ProcessChoseCSVData getChose={getChose} setNoteCSVData={setNoteCSVData} setGameStarPosition={setGameStarPosition} />
                   <ambientLight intensity={2} />
-
-                  <BackImg radius={3.93} getChose={getChose}/>
-                  <LogicOfNotes getMusicTimeMs={getMusicTimeMs} 
-                                onlyNotes={onlyNotes}
-                                setPerfect={setPerfect} 
-                                setGood={setGood} 
-                                setMiss={setMiss} 
-                                setCommbo={setCommbo}
-                                setTotalCombo={setTotalCombo}
-                                getCommbo={getCommbo}
-                                setJudgeStatus={setJudgeStatus}
-                                getUseMouse={getUseMouse}
+                  <BackImg radius={3.93} getChose={getChose} />
+                  <LogicOfNotes
+                    getMusicTimeMs={getMusicTimeMs}
+                    onlyNotes={onlyNotes}
+                    setPerfect={setPerfect}
+                    setGood={setGood}
+                    setMiss={setMiss}
+                    setCommbo={setCommbo}
+                    setTotalCombo={setTotalCombo}
+                    getCommbo={getCommbo}
+                    setJudgeStatus={setJudgeStatus}
+                    getUseMouse={getUseMouse}
+                    mouseXR={mouseXR}
                   />
-                  <LogicOfDarg  getMusicTimeMs={getMusicTimeMs} 
-                                onlyDrag={onlyDrag}
-                                setPerfect={setPerfect}
-                                setGood={setGood}
-                                setMiss={setMiss}
-                                setCommbo={setCommbo}
-                                setTotalCombo={setTotalCombo}
-                                setJudgeStatus={setJudgeStatus}
-                                getUseMouse={getUseMouse}
+                  <LogicOfDarg
+                    getMusicTimeMs={getMusicTimeMs}
+                    onlyDrag={onlyDrag}
+                    setPerfect={setPerfect}
+                    setGood={setGood}
+                    setMiss={setMiss}
+                    setCommbo={setCommbo}
+                    setTotalCombo={setTotalCombo}
+                    setJudgeStatus={setJudgeStatus}
+                    getUseMouse={getUseMouse}
+                    mouseXR={mouseXR}
                   />
-                  <LogicOfRotate  getMusicTimeMs={getMusicTimeMs} 
-                                  onlyRotate={onlyRotate}
-                                  setPerfect ={setPerfect}
-                                  setGood={setGood}
-                                  setMiss={setMiss}
-                                  setCommbo={setCommbo}
-                                  setTotalCombo={setTotalCombo}
-                                  setJudgeStatus={setJudgeStatus}
-                                  getUseMouse={getUseMouse}
+                  <LogicOfRotate
+                    getMusicTimeMs={getMusicTimeMs}
+                    onlyRotate={onlyRotate}
+                    setPerfect={setPerfect}
+                    setGood={setGood}
+                    setMiss={setMiss}
+                    setCommbo={setCommbo}
+                    setTotalCombo={setTotalCombo}
+                    setJudgeStatus={setJudgeStatus}
+                    getUseMouse={getUseMouse}
+                    mouseXR={mouseXR}
                   />
-                  <PlayerMark getUseMouse={getUseMouse} />
-                  <Box key={`box-${getTotalCombo}`} getJudgeStatus={getJudgeStatus} getTotalCombo={getTotalCombo}/>
-                  <JudgeTextComponent key={`judge-${getTotalCombo}`} getJudgeStatus={getJudgeStatus} getTotalCombo={getTotalCombo}/>
-                  <CommboTextComponent key={`combo-${getTotalCombo}`} getCommbo={getCommbo} getTotalCombo={getTotalCombo}/>
-
-                  {/* react-three/postprocessing 特效處理 */}
-                  <EffectComposer>
-                    <Bloom 
-                      intensity={1.5}          // 輝光的整體強度
-                      luminanceThreshold={0.2} // 設定為 1 代表只有特別指定 toneMapped={false} 且數值超標的材質會發光
-                      luminanceSmoothing={0.9} // 輝光邊緣的滑順度
-                      radius={0.1}             // 輝光擴散的範圍大小
+                  <PlayerMark getUseMouse={getUseMouse} mouseXR={mouseXR} />
+                  <Box key={`box-${getTotalCombo}`} getJudgeStatus={getJudgeStatus} getTotalCombo={getTotalCombo} />
+                  <JudgeTextComponent key={`judge-${getTotalCombo}`} getJudgeStatus={getJudgeStatus} getTotalCombo={getTotalCombo} />
+                  <CommboTextComponent key={`combo-${getTotalCombo}`} getCommbo={getCommbo} getTotalCombo={getTotalCombo} />
+                  <GameStar getGameStarPosition={getGameStarPosition} />
+                  {/* <EffectComposer>
+                    <Bloom
+                      intensity={1.5}
+                      luminanceThreshold={0.2}
+                      luminanceSmoothing={0.9}
+                      radius={0.1}
                     />
-                  </EffectComposer>
-              </group>
-              <Html>
-                <GameMusicComponent getChose={getChose} setMusicTimeMs={setMusicTimeMs} setStatus={setStatus} getStop={getStop} setStop={setStop}/>
-                <PuaseButtom getStop={getStop} setStop={setStop} />
-              </Html>
-            </>
+                  </EffectComposer> */}
+                  <PuaseButtom getStop={getStop} setStop={setStop} />
+            </group>
           )}
+          </group> 
         </XR>
       </Canvas>
+
+      <div className="sideBarLayer">
+        <SideBar setUseMouse={setUseMouse} setRotateCanva={setRotateCanva}/>
+      </div>
     </>
   );
 }
