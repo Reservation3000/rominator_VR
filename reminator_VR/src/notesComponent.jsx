@@ -1,5 +1,4 @@
-import {  getRotateJudgeAngle,
-          PlayHitSound,
+﻿import {  PlayHitSound,
 } from "./Js.js"
           
 
@@ -7,13 +6,19 @@ import {  perfectRange,
           goodRange 
 } from "./constants.js";
 
+import {  useVRStore,
+          useRotateJudgeResult
+ } from './store.js';
+import { useRotateJudge } from './hooks/hooks.jsx';
 
 
-export const LogicOfNotes = ({ getMusicTimeMs , onlyNotes , setPerfect , setGood , setMiss , setCommbo , setTotalCombo , setJudgeStatus , mouseXR}) => {
+export const LogicOfNotes = ({ getMusicTimeMs , onlyNotes , setPerfect , setGood , setMiss , setCommbo , setTotalCombo , setJudgeStatus , getUseMouse}) => {
+ 
+  const whichAngleUse = useVRStore((state) => state.angleR);  // 從 Zustand store 中獲取 angleR 的值
+ 
   if (!onlyNotes) return null;
   const activeNotes = onlyNotes.filter(note => !note.isJudged);
   
-
   return (
     <>
       {activeNotes.map((note, index) => {
@@ -53,7 +58,7 @@ export const LogicOfNotes = ({ getMusicTimeMs , onlyNotes , setPerfect , setGood
 
         // //計算與判定線的距離
         const getNoteCenterAngle = note.noteLand * Math.PI / 16;  //轉成度數
-        const angleDiff = Math.abs(mouseXR - getNoteCenterAngle);    //滑鼠轉換的角度與音符相差多少
+        const angleDiff = Math.abs(whichAngleUse - getNoteCenterAngle);    //滑鼠轉換的角度與音符相差多少
         const angleDiff_D = angleDiff * (180 / Math.PI);
 
         if (note.isJudged == false){
@@ -119,7 +124,11 @@ export const LogicOfNotes = ({ getMusicTimeMs , onlyNotes , setPerfect , setGood
   );
 };
 
-export const LogicOfDarg = ({ getMusicTimeMs, onlyDrag, mouseXR, setPerfect, setGood, setMiss, setCommbo , setTotalCombo ,setJudgeStatus}) => {
+export const LogicOfDarg = ({ getMusicTimeMs, onlyDrag, setPerfect, setGood, setMiss, setCommbo , setTotalCombo ,setJudgeStatus , getUseMouse}) => {
+  
+  const whichAngleUse = useVRStore((state) => state.angleR);  // 從 Zustand store 中獲取 angleR 的值
+ 
+  
   if (!onlyDrag) return null;
 
   return (
@@ -188,7 +197,7 @@ for (let i = 0; i <= note.density; i++) {
             segmentJudgeStyle = 3; 
           } else if (everyNotePosition <= note.endPosition) {
             const everyNoteCenterAngle = everyDragLand * (Math.PI / 16);
-            let angleDiff = Math.abs(mouseXR - everyNoteCenterAngle) % (Math.PI * 2);
+            let angleDiff = Math.abs(whichAngleUse - everyNoteCenterAngle) % (Math.PI * 2);
             const angleDiff_D = angleDiff * (180 / Math.PI);
 
             if (angleDiff_D <= perfectRange) {
@@ -273,14 +282,14 @@ for (let i = 0; i <= note.density; i++) {
   );
 };
 
-export const LogicOfRotate = ({ getMusicTimeMs , onlyRotate , setPerfect , setGood , setMiss , setCommbo , setTotalCombo , setJudgeStatus}) => {
+export const LogicOfRotate = ({ getMusicTimeMs , onlyRotate , setPerfect , setGood , setMiss , setCommbo , setTotalCombo , setJudgeStatus , getUseMouse}) => {
+  useRotateJudge();
+  
+  const AngleDiff = useRotateJudgeResult((state) => state.rotateJudgeAngle);
+  
   if (!onlyRotate) return null;
   const activeNotes = onlyRotate.filter(note => !note.isJudged);
-
-  const AngleDiff = getRotateJudgeAngle();
-
   const now = getMusicTimeMs;
-
 
   return (
     <>

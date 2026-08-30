@@ -35,31 +35,20 @@ export const MouseTrackerD = () => {
 };
 
 
-//==============================================================================
-let angleHistory = { time: performance.now(), angle: 0 };
-let rotateResult = 0;
+//===============================================================================
+export function isUseMouseEnabled(getUseMouse , mouseXR , angleR) {
+  let angle;
 
-// 每 100ms 自動檢查一次
-setInterval(() => {
-  const now = performance.now();
-  const angle = MouseTrackerD();
-
-  const oldAngle = angleHistory.angle;
-  let diff = angle - oldAngle;
-
-  if (diff >= 6) {
-    rotateResult = 1;
-  } else if (diff <= -6) {
-    rotateResult = 2;
+  if (getUseMouse) {
+    angle = mouseXR;
+  } else if (!getUseMouse) {
+    angle = angleR;
   } else {
-    rotateResult = 0;
+    console.log("angleR is undefined");
+    angle = 0; // 預設值
   }
 
-  // 更新基準
-  angleHistory = { time: now, angle: angle };
-}, 100);
+  return angle;
+}
 
 
-export const getRotateJudgeAngle = () => {
-  return rotateResult;
-};

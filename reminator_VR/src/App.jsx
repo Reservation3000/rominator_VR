@@ -27,7 +27,9 @@ import {
   ShowChoseSongScoresBack,
   ShowGameSongText,
   ShowChoseSongScoresImg,
-  StatusControl
+  StatusControl,
+  VRTracker,
+  SideBar
 } from "./component.jsx";
 
 import { 
@@ -53,6 +55,10 @@ const xrStore = createXRStore();
 
 function App() {
 
+  {/*fix*/}
+  const [getUseMouse, setUseMouse] = useState(false); // 是否使用滑鼠控制旋轉
+
+
   const [getStatus, setStatus] = useState(0);     // 0歌曲選單、1選了歌曲、2遊玩、2.5暫停
   const [getsongs, setSongs] = useState([]);      // 存放整包歌曲資料
   const [getTouch, setTouch] = useState(0);       // 有沒有摸到歌曲
@@ -68,6 +74,9 @@ function App() {
   const [getMiss, setMiss] = useState(0);
   const [getJudgeStatus, setJudgeStatus] = useState(null); //判定狀態
   const [getTotalCombo, setTotalCombo] = useState(0); //總共連擊數
+
+  const [angleD, setAngleD] = useState(0); //旋轉角度
+  const [angleR, setAngleR] = useState(0); //旋轉弧度
 
 
   const getOnTimeUpdate = (timeInSeconds) => {
@@ -104,13 +113,13 @@ function App() {
       .catch((err) => console.error('讀取 JSON 失敗:', err));
   }, []);
 
-
+   
   const mouseXR = MouseTrackerR();
   const mouseXD = MouseTrackerD();
 
   const hitPresent = Math.round(((getPerfect + getGood) / getTotalCombo) * 100) ;
   
-  // console.log(getTouch);
+
   //===============================================================
   // return =======================================================
   //===============================================================
@@ -118,11 +127,14 @@ function App() {
     <>
     <XRButton store={xrStore} mode="immersive-vr" />
 
-    <Canvas gl={{ toneMappingExposure: 1 }}>
+    <SideBar setUseMouse={setUseMouse}/>
+
+    <Canvas  gl={{ toneMappingExposure: 1 }}>
       <XR store={xrStore}>
         <StatusControl setStatus={setStatus} />
+        <VRTracker  setAngleD={setAngleD} setAngleR={setAngleR}/>
 
-        <Html fullscreen>
+        <Html position={[0, -1, 0]} transform rotation={[-Math.PI / 2, 0, 0]}>
           {(getStatus === 0) && (
             <>
               <div className="MenuContainer">
@@ -185,15 +197,9 @@ function App() {
 
           {(getStatus === 2 ) && (
             <>
-            {/*把getChose的樂曲資料，抓csv資料並做分類處裡，並丟進setNoteData */}
             <ProcessChoseCSVData  getChose={getChose} setNoteCSVData={setNoteCSVData}/>
             
-            {/* <div className = "canva"> */}
-                  {/* <directionalLight position={[0, 0, 2]} /> */}
-
-                  <GizmoHelper alignment="bottom-right" margin={[80, 80]}>
-                    <GizmoViewport axisColors={['#ff3653', '#009b00', '#0070ff']} labelColor="white" />
-                  </GizmoHelper>
+            <group className = "canva" position={[0,0,0]} rotation={[-Math.PI / 2, 0, 0]}> 
                   < OrbitControls/>
                   <ambientLight intensity={2} />
 
@@ -207,7 +213,17 @@ function App() {
                                 setTotalCombo={setTotalCombo}
                                 getCommbo={getCommbo}
                                 setJudgeStatus={setJudgeStatus}
-                                mouseXR={mouseXR}
+                                getUseMouse={getUseMouse}
+                  />
+                  <LogicOfDarg  getMusicTimeMs={getMusicTimeMs} 
+                                onlyDrag={onlyDrag}
+                                setPerfect={setPerfect}
+                                setGood={setGood}
+                                setMiss={setMiss}
+                                setCommbo={setCommbo}
+                                setTotalCombo={setTotalCombo}
+                                setJudgeStatus={setJudgeStatus}
+                                getUseMouse={getUseMouse}
                   />
                   <LogicOfRotate  getMusicTimeMs={getMusicTimeMs} 
                                   onlyRotate={onlyRotate}
@@ -217,19 +233,10 @@ function App() {
                                   setCommbo={setCommbo}
                                   setTotalCombo={setTotalCombo}
                                   setJudgeStatus={setJudgeStatus}
+                                  getUseMouse={getUseMouse}
                   />
-                  <LogicOfDarg  getMusicTimeMs={getMusicTimeMs} 
-                                onlyDrag={onlyDrag}
-                                mouseXR={mouseXR}
-                                setPerfect={setPerfect}
-                                setGood={setGood}
-                                setMiss={setMiss}
-                                setCommbo={setCommbo}
-                                setTotalCombo={setTotalCombo}
-                                setJudgeStatus={setJudgeStatus}
-                  />
-                  <PlayerMark mouseXR={mouseXR}/>
-                  <Box position={[0, 0, 0]} key={`box-${getTotalCombo}`} getJudgeStatus={getJudgeStatus} getTotalCombo={getTotalCombo}/>
+                  <PlayerMark getUseMouse={getUseMouse} />
+                  <Box key={`box-${getTotalCombo}`} getJudgeStatus={getJudgeStatus} getTotalCombo={getTotalCombo}/>
                   <JudgeTextComponent key={`judge-${getTotalCombo}`} getJudgeStatus={getJudgeStatus} getTotalCombo={getTotalCombo}/>
                   <CommboTextComponent key={`combo-${getTotalCombo}`} getCommbo={getCommbo} getTotalCombo={getTotalCombo}/>
 
@@ -239,10 +246,10 @@ function App() {
                       intensity={1.5}          // 輝光的整體強度
                       luminanceThreshold={0.2} // 設定為 1 代表只有特別指定 toneMapped={false} 且數值超標的材質會發光
                       luminanceSmoothing={0.9} // 輝光邊緣的滑順度
-                      radius={0.5}             // 輝光擴散的範圍大小
+                      radius={0.1}             // 輝光擴散的範圍大小
                     />
                   </EffectComposer>
-              {/* </div> */}
+              </group>
               <Html>
                 <GameMusicComponent getChose={getChose} setMusicTimeMs={setMusicTimeMs} setStatus={setStatus} getStop={getStop} setStop={setStop}/>
                 <PuaseButtom getStop={getStop} setStop={setStop} />

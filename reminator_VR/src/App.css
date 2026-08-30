@@ -19,12 +19,12 @@ html, body {
 }
 
 /*遊玩畫布*/
-/* .canva{
+.canva{
     width: 100%;
     height: 100%;
     background-color: black;
     position: absolute;
-} */
+}
 
 /*遊玩時的暫停按鈕===============================================*/
 .puaseButtom{

@@ -1,7 +1,8 @@
 import { useRef, useEffect ,  useState } from 'react';
+import { useFrame} from '@react-three/fiber';
+import { useRotateJudgeResult, useVRStore } from '../store.js';
 
-
-// 自訂顏色透明度減弱動畫的hook
+// 自訂顏色透明度減弱動畫的hook ==================================================
 export function useFadeOut(trigger) {
   const [transparency, setTransparency] = useState(1);
 
@@ -20,4 +21,51 @@ export function useFadeOut(trigger) {
   }, [trigger]); 
 
   return transparency;
+}
+
+// 自訂Rotate旋轉判定的hook ==================================================
+export function useRotateJudge() {
+  const setRotateJudgeResult = useRotateJudgeResult((state) => state.setRotateJudgeResult);
+  
+  // 2. 用 useRef ，避免 re-render 
+  const angleHistoryRef = useRef([]);
+
+  useFrame(() => {
+    // 取得當前 store 裡的弧度並轉成角度
+    const currentRadian = useVRStore.getState().angleR;  // 從 store 取得當前的弧度
+    const currentAngle = currentRadian * (180 / Math.PI);
+
+    const now = performance.now();
+    const history = angleHistoryRef.current;  // 取得當前的歷史紀錄
+
+    history.push({ time: now, angle: currentAngle }); // 將當下時間與角度存入歷史紀錄
+
+    const interval = 100; // 100ms 窗口
+    const needAngle = 6;  // 門檻角度
+
+    // 移除超過 100ms 以前的紀錄
+    while (history.length > 0 && now - history[0].time > interval) {
+      history.shift();
+    }
+
+    // 計算時間窗口內的轉動量
+    if (history.length > 0) {
+      let oldest = history[0];
+      let latest = history[history.length - 1];
+      let diff = latest.angle - oldest.angle;
+
+      // 順時針轉
+      if (diff >= needAngle) {
+        setRotateJudgeResult(1);
+      } 
+      // 逆時針轉
+      else if (diff <= -needAngle) {
+        setRotateJudgeResult(2);
+      }else {
+        setRotateJudgeResult(0);
+      }
+    }
+  });
+
+  return 0;
 }

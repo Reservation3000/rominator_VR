@@ -1,7 +1,6 @@
 import { Slider } from 'antd';
 import { useRef, useEffect ,  useState } from 'react';
-import { Avatar } from 'antd';
-import {  Button } from 'antd';
+import {  Button , Drawer , Avatar , Switch} from 'antd';
 import  Papa  from  'papaparse' ;
 import { Text } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
@@ -28,6 +27,12 @@ import {
   playerMarkIn,
   playerMarkOut,
 } from "./constants.js";
+
+import {
+  isUseMouseEnabled
+} from "./Js.js";
+
+import { useVRStore } from './store.js';
 
 //==========================================================================================
 // Menu 0===================================================================================
@@ -169,16 +174,7 @@ export const MenuMusicComponent = ({ getTouch , getChose}) => {
   );
 };
 
-export const MenuSongInstruction = ({ getChose }) => {
-  // const angle = getChose
 
-  // return (
-  //    <CaretLeftFilled 
-  //           disabled={getPage  <= 0}
-  //           onClick={() => {if (!isFirstPage) setPage(prev => prev - 1);}}
-  //         />
-  // );
-}
 
 //==========================================================================================
 //過場 1====================================================================================
@@ -402,11 +398,14 @@ useEffect(() => {
   );
 }
 
-export const PlayerMark = ({ mouseXR }) => {
+export const PlayerMark = ({ getUseMouse }) => {
   const arcLong = (Math.PI / 16) + 0.5
   const halfArcLong = arcLong/2
+
+  const angle = useVRStore((state) => state.angleR);
+
   return (
-    <mesh rotation={[0, 0, mouseXR]}>
+    <mesh rotation={[0, 0, angle]} position={[0, 0, 0]}>
       <ringGeometry args={[playerMarkIn, playerMarkOut, 32, 1, -halfArcLong, arcLong ]} />
       <meshStandardMaterial color={"rgb(255, 236, 33)"} emissive={"rgb(255, 236, 33)"} emissiveIntensity={3} side={2} />
     </mesh>
@@ -618,6 +617,34 @@ export const ShowGameSongText = ({ className, whichGet, offset, r, a }) => {
   );
 };
 
+
+//==========================================================================================
+// VR角度取得================================================================================
+//==========================================================================================
+export const VRTracker = () => {
+  const setAngles = useVRStore((state) => state.setAngles);
+  
+  const rotation = new THREE.Euler();
+  const quaternion = new THREE.Quaternion();
+
+  useFrame((state) => {
+    state.camera.getWorldQuaternion(quaternion);
+    rotation.setFromQuaternion(quaternion);
+
+    const angleZD = (rotation.z * 180) / Math.PI;
+    const angleZLimD = ((angleZD % 360) + 360) % 360;
+
+    const angleZR = rotation.z;
+    const angleZLimR = ((angleZR + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+
+    // 直接更新 Zustand store
+    setAngles(angleZLimD, angleZLimR);
+  });
+
+  return null;
+};
+
+
 //==========================================================================================
 //fix component=============================================================================
 //==========================================================================================
@@ -632,13 +659,13 @@ export const SliderComponent = ({setVal}) => {
 
 export const StatusControl = ({ setStatus }) => {
   const handleKeyDown = (event) => {
-    if (event.key === '0') {
+    if (event.key === 'a') {
       setStatus(0);
-    } else if (event.key === '1') {
+    } else if (event.key === 's') {
       setStatus(1);
-    } else if (event.key === '2') {
+    } else if (event.key === 'd') {
       setStatus(2);
-    } else if (event.key === '3') {
+    } else if (event.key === 'f') {
       setStatus(3);
     }
   };
@@ -652,7 +679,42 @@ export const StatusControl = ({ setStatus }) => {
   return null;
 };
 
+export const SideBar = ({ setUseMouse }) => {
 
+  // 是否開啟維修介面================================
+  const [open, setOpen] = useState(false);
+
+   const showDrawer = () => {
+    setOpen(true);
+  };
+
+  const onClose = () => {
+    setOpen(false);
+  };
+
+  //================================================
+    const onChangeUseMouse = checked => {
+      if (setUseMouse) { setUseMouse(checked); 
+        console.log(`Use Mouse to control rotation: ${checked}`);
+      }
+    };
+
+    return (
+    <>
+      <Button type="primary" onClick={showDrawer}>
+        Fix Pabe
+      </Button>
+      <Drawer
+        title="Fix"
+        closable={{ 'aria-label': 'Close Button' }}
+        onClose={onClose}
+        open={open}
+      >
+        <Switch defaultChecked onChange={onChangeUseMouse} />  Use Mouse to control rotation
+      </Drawer>
+    </>
+  );
+};
 
 
 
