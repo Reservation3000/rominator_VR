@@ -1,19 +1,23 @@
-﻿import {   PlayHitSound,
-} from "./Js.js"
-          
-import { useVRStore } from './store.js';
-
-import {  perfectRange,
-          goodRange 
-} from "./constants.js";
-
+﻿import { PlayHitSound } from "./Js.js"
+import { perfectRange , goodRange } from "./constants.js";
 import { useRotateJudge } from './hooks/hooks.jsx';
+import {  useVRStore , 
+          useMouseStore , 
+          useRotateJudgeResult,
+          usePerfectStore,
+          useGoodStore,
+          useMissStore
+         } from './store.js';
 
-import { useRotateJudgeResult } from './store.js';
 
+export const LogicOfNotes = ({ musicTimeMs , onlyNotes , setCommbo , setTotalCombo , setJudgeStatus , getUseMouse }) => {
+  
+  const angleVR = useVRStore((state) => state.angleR);        // 訂閱 zustand  的 angleR
+  const mouseXR = useMouseStore((state) => state.mouseXR);    // 訂閱 zustand  的 mouseXR
+  const perfect = usePerfectStore.getState().setPerfect;      // 訂閱 zustand  的 setPerfect
+  const good = useGoodStore.getState().setGood;               // 訂閱 zustand  的 setGood
+  const miss = useMissStore.getState().setMiss;               // 訂閱 zustand  的 setMiss
 
-export const LogicOfNotes = ({ getMusicTimeMs , onlyNotes , setPerfect , setGood , setMiss , setCommbo , setTotalCombo , setJudgeStatus , getUseMouse  , mouseXR}) => {
-  const angleVR = useVRStore((state) => state.angleR);
   const angle = getUseMouse ? angleVR : mouseXR;
   if (!onlyNotes) return null;
   const activeNotes = onlyNotes.filter(note => !note.isJudged);
@@ -24,7 +28,7 @@ export const LogicOfNotes = ({ getMusicTimeMs , onlyNotes , setPerfect , setGood
       {activeNotes.map((note, index) => {
         // 2. 計算時間與位置
         const requiredMs = (note.startPosition - note.endPosition) / note.noteSpeed * (1000 / 60);
-        const elapsedMs = getMusicTimeMs - (note.triggerTime - requiredMs);
+        const elapsedMs = musicTimeMs - (note.triggerTime - requiredMs);
 
         // let nextNote = { ...note }; //複製一份新的物件
 
@@ -79,20 +83,20 @@ export const LogicOfNotes = ({ getMusicTimeMs , onlyNotes , setPerfect , setGood
             switch(note.judgeStyle) {
             case 1:
               PlayHitSound();
-              setPerfect((prev) => prev + 1);
+              perfect((prev) => prev + 1);
               setCommbo((prev) => prev + 1);
               setTotalCombo((prev) => prev + 1);
               setJudgeStatus('P');
               break;
             case 2:
               PlayHitSound();
-              setGood((prev) => prev + 1);
+              good((prev) => prev + 1);
               setCommbo((prev) => prev + 1);
               setTotalCombo((prev) => prev + 1);
               setJudgeStatus('G');
               break;
             case 3:
-              setMiss((prev) => prev + 1);
+              miss((prev) => prev + 1);
               setTotalCombo((prev) => prev + 1);
               setCommbo(0);
               setJudgeStatus('M');
@@ -124,8 +128,14 @@ export const LogicOfNotes = ({ getMusicTimeMs , onlyNotes , setPerfect , setGood
   );
 };
 
-export const LogicOfDarg = ({ getMusicTimeMs, onlyDrag, setPerfect, setGood, setMiss, setCommbo , setTotalCombo ,setJudgeStatus, getUseMouse , mouseXR}) => {
-  const angleVR = useVRStore((state) => state.angleR);
+export const LogicOfDarg = ({ musicTimeMs, onlyDrag , setCommbo , setTotalCombo ,setJudgeStatus, getUseMouse}) => {
+  
+  const angleVR = useVRStore.getState().angleR;               // 訂閱 zustand  的 angleR
+  const mouseXR = useMouseStore.getState().mouseXR;           // 訂閱 zustand  的 mouseXR
+  const perfect = usePerfectStore.getState().setPerfect;      // 訂閱 zustand  的 setPerfect
+  const good = useGoodStore.getState().setGood;               // 訂閱 zustand  的 setGood
+  const miss = useMissStore.getState().setMiss;               // 訂閱 zustand  的 setMiss
+  
   const angle = getUseMouse ? angleVR : mouseXR;
   if (!onlyDrag) return null;
 
@@ -139,8 +149,8 @@ export const LogicOfDarg = ({ getMusicTimeMs, onlyDrag, setPerfect, setGood, set
         const requiredMs = (note.startPosition - note.endPosition) / note.noteSpeed * (1000 / 60);
         
         // 效能優化：時間還沒到或已結束太久，跳過
-        if (getMusicTimeMs < note.triggerTimeStart - requiredMs - 5000) return null;
-        if (getMusicTimeMs > note.triggerTimeEnd + 5000) return null;
+        if (musicTimeMs < note.triggerTimeStart - requiredMs - 5000) return null;
+        if (musicTimeMs > note.triggerTimeEnd + 5000) return null;
 
         // 每個細分音符之間的平均毫秒數
         const averageMs = (note.triggerTimeEnd - note.triggerTimeStart) / note.density; 
@@ -164,7 +174,7 @@ for (let i = 0; i <= note.density; i++) {
           // 計算每個細分音符的落點角度
           const everyDragLand = note.noteLandStart + averageAng * i;
           // 從應該啟動的時間算起經過了多少毫秒
-          const elapsedMs = getMusicTimeMs - (everyDragTriggerTime - requiredMs);
+          const elapsedMs = musicTimeMs - (everyDragTriggerTime - requiredMs);
           
           // 如果已經被判定過，不繪製
           if (note.segmentStates && note.segmentStates[i] && note.segmentStates[i].isJudged) {
@@ -220,7 +230,7 @@ for (let i = 0; i <= note.density; i++) {
             switch (segmentJudgeStyle) {
               case 1: // Perfect
                 PlayHitSound();
-                setPerfect((prev) => prev + 1);
+                perfect((prev) => prev + 1);
                 setCommbo((prev) => prev + 1);
                 setTotalCombo((prev) => prev + 1);
                 setJudgeStatus('P');
@@ -228,14 +238,14 @@ for (let i = 0; i <= note.density; i++) {
 
               case 2: // Good
                 PlayHitSound();
-                setGood((prev) => prev + 1);
+                good((prev) => prev + 1);
                 setCommbo((prev) => prev + 1);
                 setTotalCombo((prev) => prev + 1);
                 setJudgeStatus('G');
                 break;
 
               case 3: // Miss
-                setMiss((prev) => prev + 1);
+                miss((prev) => prev + 1);
                 setTotalCombo((prev) => prev + 1);
                 setCommbo(0);
                 setJudgeStatus('M');
@@ -280,17 +290,19 @@ for (let i = 0; i <= note.density; i++) {
   );
 };
 
-export const LogicOfRotate = ({ getMusicTimeMs , onlyRotate , setPerfect , setGood , setMiss , setCommbo , setTotalCombo , setJudgeStatus , getUseMouse , mouseXR}) => {
+export const LogicOfRotate = ({ musicTimeMs , onlyRotate , setCommbo , setTotalCombo , setJudgeStatus , getUseMouse }) => {
   
-  useRotateJudge(getUseMouse, mouseXR);
+  useRotateJudge(getUseMouse); // 呼叫自訂的 hook 來判定旋轉方向
+
+  const activeNotes = onlyRotate.filter(note => !note.isJudged); // 過濾出尚未判定的音符
+
+  const perfect = usePerfectStore.getState().setPerfect;      // 訂閱 zustand  的 setPerfect
+  const good = useGoodStore.getState().setGood;               // 訂閱 zustand  的 setGood
+  const miss = useMissStore.getState().setMiss;               // 訂閱 zustand  的 setMiss
 
   const AngleDiff =  useRotateJudgeResult((state) => state.rotateJudgeAngle);
 
-  if (!onlyRotate) return null;
-  const activeNotes = onlyRotate.filter(note => !note.isJudged);
-
-  const now = getMusicTimeMs;
-
+  const now = musicTimeMs;
 
   return (
     <>
@@ -298,7 +310,7 @@ export const LogicOfRotate = ({ getMusicTimeMs , onlyRotate , setPerfect , setGo
 
         // 2. 計算時間與位置
         const requiredMs = (note.startPosition - note.endPosition) / note.noteSpeed * (1000 / 60);
-        const elapsedMs = getMusicTimeMs - (note.triggerTime - requiredMs);
+        const elapsedMs = musicTimeMs - (note.triggerTime - requiredMs);
 
         // let nextNote = { ...note }; //複製一份新的物件
 
@@ -317,9 +329,9 @@ export const LogicOfRotate = ({ getMusicTimeMs , onlyRotate , setPerfect , setGo
         // 定義環形的大小 (跟隨 notePosition 變動)
         // innerRadius 是音符內徑，outerRadius 是外徑
         const outerRadius = note.notePosition;
-        const innerRadius = outerRadius  - 0.05;
+        const innerRadius = outerRadius  - 0.1;
 
-        const noteColor = note.direction === 1 ? '#0062ff' : 'red';
+        const noteColor = note.direction === 1 ? 'rgb(0, 100, 255)' : 'rgb(255, 0, 0)';
 
 
 
@@ -346,20 +358,20 @@ export const LogicOfRotate = ({ getMusicTimeMs , onlyRotate , setPerfect , setGo
             switch(note.judgeStyle) {
             case 1:
               PlayHitSound();
-              setPerfect((prev) => prev + 1);
+              perfect((prev) => prev + 1);
               setCommbo((prev) => prev + 1);
               setTotalCombo((prev) => prev + 1);
               setJudgeStatus('P');
               break;
             case 2:
               PlayHitSound();
-              setGood((prev) => prev + 1);
+              good((prev) => prev + 1);
               setCommbo((prev) => prev + 1);
               setTotalCombo((prev) => prev + 1);
               setJudgeStatus('G');
               break;
             case 3:
-              setMiss((prev) => prev + 1);
+              miss((prev) => prev + 1);
               setTotalCombo((prev) => prev + 1);
               setCommbo(0);
               setJudgeStatus('M');
@@ -379,7 +391,7 @@ export const LogicOfRotate = ({ getMusicTimeMs , onlyRotate , setPerfect , setGo
                 我們用 thetaStart 和 thetaLength 來控制音符弧度的大小 (例如佔一小段角度)
               */}
               <ringGeometry args={[innerRadius, outerRadius, 32, 1, 0 ]} />
-              <meshStandardMaterial color={noteColor} emissive={noteColor} emissiveIntensity={3}  />
+              <meshStandardMaterial color={noteColor}  />
             </mesh>
           </group>
         );

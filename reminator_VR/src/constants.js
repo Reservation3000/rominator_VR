@@ -1,6 +1,6 @@
 export const serverURL = "http://localhost:8081/api/VRmgDB/data";
-export const imageProxyURL = "http://localhost:8081/api/proxy/media";
-export const audioProxyURL = "http://localhost:8081/api/proxy/media";
+export const audioProxyURL = "https://mg.reservationfurry.art/assest/hit.mp3";
+export const HDRIProxyURL = "https://mg.reservationfurry.art/assest/baseHDR.exr";
 
 export const SongCard3DRadius = 4.0;        //歌曲選單，大圓半徑
 export const menuMgCardsSize= 1.3;          //歌曲選單每首歌曲的大小
@@ -8,7 +8,7 @@ export const menuMgCardsSize= 1.3;          //歌曲選單每首歌曲的大小
 //遊戲範圍配置
 export const seatRadius = 1.1;                         //座位半徑                       //改這裡動全部
 export const gameAreaRingRadiusIn = 4.9;                //遊戲範圍_環_內圈半徑
-export const gameAreaRingRadiusOut = 4.93;              //遊戲範圍_環_外圈半徑
+export const gameAreaRingRadiusOut = gameAreaRingRadiusIn + 0.03;    //遊戲範圍_環_外圈半徑
 export const seatRingRadiusIn =  seatRadius;            //座位_環_內圈半徑
 export const seatRingRadiusOut = seatRadius + 0.01;     //座位_環_外圈半徑
 

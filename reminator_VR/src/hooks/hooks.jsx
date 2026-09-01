@@ -1,8 +1,8 @@
 import { useRef, useEffect ,  useState } from 'react';
 import { useFrame} from '@react-three/fiber';
-import { useRotateJudgeResult, useVRStore } from '../store.js';
+import { useRotateJudgeResult, useVRStore , useMouseStore} from '../store.js';
 
-// 自訂顏色透明度減弱動畫的hook ==================================================
+// 自訂顏色透明度減弱動畫的function ==================================================
 export function useFadeOut(trigger) {
   const [transparency, setTransparency] = useState(1);
 
@@ -23,16 +23,17 @@ export function useFadeOut(trigger) {
   return transparency;
 }
 
-// 自訂Rotate旋轉判定的hook ==================================================
-export function useRotateJudge(getUseMouse , mouseXR) {
-  const setRotateJudgeResult = useRotateJudgeResult((state) => state.setRotateJudgeResult);
+// 自訂Rotate旋轉判定的function ==================================================
+export function useRotateJudge(getUseMouse ) {
+  const setRotateJudgeResult = useRotateJudgeResult((state) => state.setRotateJudgeResult); // 取得設定旋轉判定結果的函數
+
+  const angleVR = useVRStore((state) => state.angleR);      // 訂閱 zustand  的 angleR
+  const mouseXR = useMouseStore((state) => state.mouseXR);  // 訂閱 zustand  的 mouseXR
+  const currentRadian = getUseMouse ? angleVR : mouseXR;
 
   const angleHistoryRef = useRef([]);
 
   useFrame(() => {
-    // 取得當前 store 裡的弧度並轉成角度
-    const currentRadianVR = useVRStore.getState().angleR;  // 從 store 取得當前的弧度
-    const currentRadian = getUseMouse ? currentRadianVR : mouseXR;  // 根據 getUseMouse 決定使用哪個角度值
     const currentAngle = currentRadian * (180 / Math.PI);
 
     const now = performance.now();
@@ -69,3 +70,4 @@ export function useRotateJudge(getUseMouse , mouseXR) {
 
   return 0;
 }
+

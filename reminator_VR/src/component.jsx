@@ -1,22 +1,17 @@
 import { Slider } from 'antd';
-import { XR } from '@react-three/xr';
 import { useRef, useEffect, useState, useMemo } from 'react';
-import {  Button , Drawer , Avatar , Switch} from 'antd';
+import {  Drawer , Switch } from 'antd';
+import { UnorderedListOutlined } from '@ant-design/icons';
 import  Papa  from  'papaparse' ;
-import { Text , useTexture} from '@react-three/drei';
+import { Text , useTexture , Torus} from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import {  CaretRightFilled,
-          CaretLeftFilled 
-} from '@ant-design/icons';
 
 import { 
    useFadeOut 
 }from './hooks/hooks.jsx'; 
 
 import {
-  imageProxyURL,
-  audioProxyURL,
   SongCard3DRadius,
   startPosition,
   menuMgCardsSize,
@@ -30,7 +25,16 @@ import {
   playerMarkOut,
 } from "./constants.js";
 
-import { useVRStore } from './store.js';
+import { useVRStore , 
+         useMouseStore, 
+         useMusicTimeStore , 
+         usePerfectStore , 
+         useGoodStore , 
+         useMissStore 
+} from './store.js';
+
+
+
 
 //==========================================================================================
 // 通用component ===========================================================================
@@ -49,6 +53,118 @@ const isAngleInRange = (angle, rangeL, rangeR) => {
   return normalizedAngle >= normalizedRangeL || normalizedAngle <= normalizedRangeR;
 };
 
+// 躺著的文字，圍繞圓心 ( 是否啟用旋轉 , 顯示的文字 , 的弧度偏移 , 距離圓心的半徑 , 間隔弧度 , 旋轉角度偏移 , 文字大小 , 顏色 , 是否中心對齊 )
+export const ShowGameSongText = ({ shouldRotate, whichGet, offset , r, step, offset2 , textSize , color , isCenter}) => {
+
+  const groupRef = useRef(null);
+
+  const characters = Array.from(String(whichGet ?? ''));
+  const isChinese = /[\u4e00-\u9fa5]/.test(whichGet);
+  const safeStep = Number.isFinite(step) ? step : 0.3;
+  const spacingScale = Math.max(0.5, Math.min(1.6, 18 / Math.max(characters.length, 1)));
+  const angleStep = isChinese ? safeStep * spacingScale : safeStep;
+
+
+  useFrame((state, delta) => {
+    if (shouldRotate && groupRef.current) {
+      groupRef.current.rotation.z += delta * 0.2;
+    }
+  });
+
+  return (
+    <group ref={groupRef} position={[0, 0, 0]} rotation={[0, 0, offset2 || 0]}>
+      {characters.map((char, i) => {
+        // 使用傳入的靜態 offset 排列文字弧度
+        const baseAngle_center = (i - (characters.length - 1) / 2) * angleStep * -1;
+        const baseAngle_left = Math.PI - (i * angleStep)
+        const baseAngle = isCenter ? baseAngle_center : baseAngle_left;
+        const angle = baseAngle + offset;
+        const x = Math.cos(angle) * r;
+        const y = Math.sin(angle) * r;
+
+        return (
+          <Text
+            key={`${char}-${i}`}
+            position={[x, y, 0.01]}
+            rotation={[0, 0, angle - Math.PI / 2]}
+            fontSize={textSize}
+            color={color || "white"}
+            anchorX="center"
+            anchorY="middle"
+          >
+            {char}
+          </Text>
+        );
+      })}
+    </group>
+  );
+};
+
+// 站著的文字，圍繞圓心
+export const ShowGameSongTextStand = ({ shouldRotate, whichGet, offset , r, step , offset2 , textSize}) => {
+
+  const groupRef = useRef(null);
+
+  const characters = Array.from(String(whichGet ?? ''));
+  const isChinese = /[\u4e00-\u9fa5]/.test(whichGet);
+  const safeStep = Number.isFinite(step) ? step : 0.3;
+  const spacingScale = Math.max(0.5, Math.min(1.6, 18 / Math.max(characters.length, 1)));
+  const angleStep = isChinese ? safeStep * spacingScale : safeStep;
+
+
+  useFrame((state, delta) => {
+    if (shouldRotate && groupRef.current) {
+      groupRef.current.rotation.z += delta * 0.2;
+    }
+  });
+
+  return (
+    <group ref={groupRef} position={[0, 0, 1.5]} rotation={[0, 0, offset2 || 0]}>
+      {characters.map((char, i) => {
+        const baseAngle = (i - (characters.length - 1) / 2) * angleStep * -1;
+        const angle = baseAngle + offset;
+        const x = Math.cos(angle) * r;
+        const y = Math.sin(angle) * r;
+
+        return (
+          <group key={`${char}-${i}`} position={[x, y, 0.01]} rotation={[0, 0, angle - Math.PI / 2]}>
+            <Text
+              rotation={[Math.PI/2, 0, 0]}
+              fontSize={textSize}
+              color="white"
+              anchorX="center"
+              anchorY="middle"
+              transparent
+              fillOpacity={0.2}
+            >
+              {char}
+            </Text>
+          </group>
+        );
+      })}
+    </group>
+  );
+};
+
+// 彈出動畫效果
+function PopAnimation(trigger , enterX, enterY, enterz , targetXY , lambda ){
+  const value = useRef(null);
+
+  useEffect(() => {
+    if (!value.current) return;
+    value.current.scale.set(enterX, enterY, enterz);
+    value.current.position.z = -5;
+  }, [trigger]);
+
+  useFrame((state, delta) => {
+    if (!value.current) return;
+    value.current.scale.x = THREE.MathUtils.damp(value.current.scale.x, targetXY, lambda, delta);
+    value.current.scale.y = THREE.MathUtils.damp(value.current.scale.y, targetXY, lambda, delta);
+    value.current.position.z = THREE.MathUtils.damp(value.current.position.z, 0, 10, delta);
+  });
+
+  return value;
+}
 //==========================================================================================
 // Menu 0===================================================================================
 //==========================================================================================
@@ -70,31 +186,34 @@ export const Roundabout = ( ) => {
     <group ref={groupRef} position={[0, 0, 0]}>=
       <mesh>
         <ringGeometry args={[gameAreaRingRadiusIn, gameAreaRingRadiusIn + 0.03, 30, 1, -outerLen / 2, outerLen]} />
-        <meshBasicMaterial color="rgb(205, 205, 209)" side={2} />
+        <meshBasicMaterial color="rgb(205, 205, 209)"  side={THREE.DoubleSide} />
       </mesh>
 =
       <mesh>
         <ringGeometry args={[gameAreaRingRadiusIn, gameAreaRingRadiusIn + 0.03, 30, 1, Math.PI - outerLen / 2, outerLen]} />
-        <meshBasicMaterial color="rgb(205, 205, 209)" side={2} />
+        <meshBasicMaterial color="rgb(205, 205, 209)"  side={THREE.DoubleSide} />
       </mesh>
 =
       <mesh>
         <ringGeometry args={[gameAreaRingRadiusIn - 0.5, gameAreaRingRadiusIn - 0.47, 30, 1, -innerLen / 2, innerLen]} />
-        <meshBasicMaterial color="rgb(205, 205, 209)" side={2} />
+        <meshBasicMaterial color="rgb(205, 205, 209)"  side={THREE.DoubleSide} />
       </mesh>
 =
       <mesh>
         <ringGeometry args={[gameAreaRingRadiusIn - 0.5, gameAreaRingRadiusIn - 0.47, 30, 1, Math.PI - innerLen / 2, innerLen]} />
-        <meshBasicMaterial color="rgb(205, 205, 209)" side={2} />
+        <meshBasicMaterial color="rgb(205, 205, 209)"  side={THREE.DoubleSide} />
       </mesh>
     </group>
   )
 }
 
 // 曲目Card group 
-const SongCard3D = ({ song, angle, isInRange, setTouch, setChose, setStatus, setStop, getChose, setNoteCSVData, setMusicTimeMs }) => {
-  const texture = useTexture(song?.img ? `${imageProxyURL}?url=${encodeURIComponent(song.img)}` : undefined);
+const SongCard3D = ({ song, angle, isInRange, setTouch, setChose, setStatus,setStop, setNoteCSVData }) => {
+  const texture = useTexture(song?.img ? `${song.img}?url=${encodeURIComponent(song.img)}` : undefined);
   const imageRadius = menuMgCardsSize * 0.88;
+
+  const setMusicTimeMs =  useMusicTimeStore.getState().setMusicTimeMs;
+ 
 
   const cardGroupRef = useRef();  // 選中的歌曲放大
   const ringRef = useRef();       // 選中的歌曲圓環
@@ -130,16 +249,11 @@ const SongCard3D = ({ song, angle, isInRange, setTouch, setChose, setStatus, set
         rotation={[0, 0, -Math.PI / 2]}
       >
         {/* 圓環旋轉與縮放 */}
-        <group ref={ringRef} position={[0, 0, 0.5]}>
-          <mesh>
-            <ringGeometry args={[1, 1.01, 30, 1, 0, 1.5]} />
-            <meshBasicMaterial color="rgb(255, 255, 255)" side={THREE.DoubleSide} />
-          </mesh>
-          <mesh>
-            <ringGeometry args={[1, 1.01, 30, 1, Math.PI, 1.5]}/>
-            <meshBasicMaterial color="rgb(255, 255, 255)" side={THREE.DoubleSide} />
-          </mesh>
-        </group>
+      <group ref={ringRef} position={[0, 0, 0.5]}>
+        {/* args: [圓環半徑, 管身厚度, 徑向分段, 圓周分段, 弧長角度] */}
+        <Torus args={[1, 0.02, 16, 32, 1.5]} rotation={[0, 0, 0]}><meshBasicMaterial color="white" /></Torus>
+        <Torus args={[1, 0.02, 16, 32, 1.5]} rotation={[0, 0, Math.PI]}><meshBasicMaterial color="white" /></Torus>
+      </group>
 
         {/* 外圈圓 */}
         <mesh
@@ -147,18 +261,6 @@ const SongCard3D = ({ song, angle, isInRange, setTouch, setChose, setStatus, set
           onPointerDown={() => {
             if (isInRange) {
               setStop(true);
-
-              if (getChose?.id === song.id) {
-                setNoteCSVData([]);
-                setMusicTimeMs(0);
-                setChose(null);
-                setStatus(1);
-                requestAnimationFrame(() => {
-                  setChose(song);
-                  setStatus(1);
-                });
-                return;
-              }
 
               setNoteCSVData([]);
               setMusicTimeMs(0);
@@ -178,8 +280,6 @@ const SongCard3D = ({ song, angle, isInRange, setTouch, setChose, setStatus, set
         >
           <circleGeometry args={[menuMgCardsSize, 40]} />
           <meshStandardMaterial color={isInRange && isPoint ? '#9b0000' : isInRange  ? '#f5f200'  : '#111111'}
-            emissive={ isInRange && isPoint ? '#9b0000' : isInRange ? '#f5f200' : '#222222'}
-            emissiveIntensity={isInRange ? (isPoint  ? 1.5 : 1.1) : 0.2}
             metalness={0.1}
             roughness={0.5}
           />
@@ -229,7 +329,9 @@ const SongCard3D = ({ song, angle, isInRange, setTouch, setChose, setStatus, set
 };
 
 // 選歌機制 + SongCard3D 渲染
-export const MenuComponent = ({ getsongs, setTouch, setChose, getTouch, getChose, setStatus, getPage, getUseMouse, mouseXD, setStop, setNoteCSVData, setMusicTimeMs }) => {
+export const MenuComponent = ({ getsongs, setTouch, setChose, getTouch, setStatus, getStatus, getPage, getUseMouse,setStop, setNoteCSVData }) => {
+
+  const scale = PopAnimation(getStatus , 0.8, 0.8, 1, 1, 30);
 
   const pageLimit = 8;
   const pageStartIndex = getPage * pageLimit;
@@ -240,6 +342,7 @@ export const MenuComponent = ({ getsongs, setTouch, setChose, getTouch, getChose
   );
 
   const VRangle = useVRStore((state) => state.angleR);
+  const mouseXD = useMouseStore((state) => state.mouseXR) * (360 / window.innerWidth); // 將 mouseXR 轉換為角度
   const [mouseAngle, setMouseAngle] = useState(mouseXD);
 
   useEffect(() => {
@@ -267,7 +370,7 @@ export const MenuComponent = ({ getsongs, setTouch, setChose, getTouch, getChose
   }, [pageNow, whichAngleUse, setTouch]);
 
   return (
-    <group position={[0, 0, -1.5]}>
+    <group ref={scale} position={[0, 0, -1.5]}>
       {pageNow.map((ID, index) => {
         const totalInThisPage = pageNow.length;
         const angle = (index / totalInThisPage) * 360;
@@ -284,11 +387,9 @@ export const MenuComponent = ({ getsongs, setTouch, setChose, getTouch, getChose
             setTouch={setTouch}
             getTouch={getTouch}
             setChose={setChose}
-            getChose={getChose}
             setStatus={setStatus}
             setStop={setStop}
             setNoteCSVData={setNoteCSVData}
-            setMusicTimeMs={setMusicTimeMs}
           />
         );
       })}
@@ -309,9 +410,9 @@ export const MenuPageSwitchBottom = ({ setPage , getPage , pageTotal }) => {
   const colorR = isTouchR ? 'white' : 'rgb(150,150,150)' ;
 
   return (
-    <group position={[0, 0, 0]}>
+    <group position={[0, 0, -1]}>
       <Text
-        position={[-5.0, 0, 0]}
+        position={[-1.2, 0, 0]}
         fontSize={0.55}
         color={isFirstPage ? 'rgb(150, 0, 0)' : colorL}
         anchorX="center"
@@ -324,7 +425,7 @@ export const MenuPageSwitchBottom = ({ setPage , getPage , pageTotal }) => {
       </Text>
 
       <Text
-        position={[5.0, 0, 0]}
+        position={[1.2, 0, 0]}
         fontSize={0.55}
         color={isLastPage ? 'rgb(150, 0, 0)' : colorR}
         anchorX="center"
@@ -342,7 +443,7 @@ export const MenuPageSwitchBottom = ({ setPage , getPage , pageTotal }) => {
 // 音樂撥放機制
 export const MenuMusicComponent = ({ getTouch , getStatus}) => {
     const musicTouched = useRef(null);
-    const localSrc = getTouch?.mp3 || '';
+    const localSrc = getTouch?.mp3 || null;
 
     useEffect(() => {
       if (!musicTouched.current) return;
@@ -357,10 +458,12 @@ export const MenuMusicComponent = ({ getTouch , getStatus}) => {
       musicTouched.current.play().catch(() => {});
     }, [getTouch?.mp3, getStatus]);
 
+    if (!localSrc) return null;
+
     return (
     <>
       {/* src 帶入音檔路徑  autoPlay 載入就自動播放  controls顯示播放控制條*/}
-      <audio 
+      <audio
             style={{ position: 'absolute' }}
             src={localSrc}
              ref={musicTouched}
@@ -407,7 +510,7 @@ export const ProcessChoseCSVData = ({ getChose , setNoteCSVData , setGameStarPos
         const firstLineInt = rows[0][0];
         console.log("First line integer:", firstLineInt);
         //第二行讀取第一個音符的land
-        const secondLineLand = rows[1];
+        const secondLineLand = Number(rows[1]?.[0]);
         console.log("Second line land:", secondLineLand);
 
         // 從第三行開始讀取資料 (i = 2)
@@ -468,7 +571,7 @@ export const ProcessChoseCSVData = ({ getChose , setNoteCSVData , setGameStarPos
       });
 
         setNoteCSVData(processedNotes); // 把處理好的資料存進 State
-        setGameStarPosition(secondLineLand); // 把第二行的資料存進 State
+        setGameStarPosition(Number.isFinite(secondLineLand) ? secondLineLand : 0); // 把第二行的資料存進 State
         
       }catch(error) {
 
@@ -482,18 +585,18 @@ export const ProcessChoseCSVData = ({ getChose , setNoteCSVData , setGameStarPos
   }, [getChose]); 
 };
 
-export const ShowChoseSong = ({ getChose , setStatus}) => {
+export const ShowChoseSong = ({ getChose, setStatus }) => {
   const [getTime, setTime] = useState(5); 
-  const albumTexture = useTexture(getChose?.img ? `${imageProxyURL}?url=${encodeURIComponent(getChose.img)}` : undefined);
+  const albumTexture = useTexture(getChose?.img ? `${getChose.img}?url=${encodeURIComponent(getChose.img)}` : undefined);
 
-  
+  const scale = PopAnimation(getChose , 0.8, 0.8, 1, 1, 30);
 
   useEffect(() => {
     let interval = null;
     
     if (getTime > 0) {
       interval = setInterval(() => {
-        setTime((millisSeconds) => millisSeconds - 1);
+        setTime((prev) => prev - 1);
       }, 1000);
     } else if (getTime === 0) {
       setStatus(2);
@@ -503,11 +606,11 @@ export const ShowChoseSong = ({ getChose , setStatus}) => {
   }, [getTime, setStatus]);
 
   return (
-    <group position={[0, 0, -2]}>
+    <group ref={scale} position={[0, 0, 0]}>
   
       <mesh position={[0, 0, -0.2]}>
-        <circleGeometry args={[2.9, 64]} />
-        <meshStandardMaterial color="#47484a" emissive="#47484a" emissiveIntensity={0.6} />
+        <circleGeometry args={[3.1, 64]} />
+        <meshStandardMaterial color="#47484a"/>
       </mesh>
 
       <mesh position={[0, 0, 0]}>
@@ -516,23 +619,98 @@ export const ShowChoseSong = ({ getChose , setStatus}) => {
       </mesh>
 
       <mesh position={[0, 0, 0.1]}>
-        <circleGeometry args={[1.55, 64]} />
+        <circleGeometry args={[2, 64]} />
         <meshBasicMaterial map={albumTexture || null} color={albumTexture ? '#ffffff' : '#262626'} />
       </mesh>
 
-      <ShowGameSongText shouldRotate={false} whichGet={257} offset={0} r={-3.2} a={0.1} offset2={Math.PI} textSize={0.6}/>
+      {/* 環形 遊戲範圍 */}
+      <mesh>
+        <ringGeometry args={[gameAreaRingRadiusIn, gameAreaRingRadiusOut, 64]} /> 
+        <meshStandardMaterial color="white" transparent={true} opacity={0.5}/>
+      </mesh>
+
+      {/* 環形 裝飾 */}
+      <group position={[0, 0, 0.01]}>
+        <mesh>
+          <ringGeometry args={[gameAreaRingRadiusIn, gameAreaRingRadiusIn+0.2, 64]} /> 
+          <meshStandardMaterial color="white" transparent={true} opacity={0.5}/>
+        </mesh>
+        <mesh>
+          <ringGeometry args={[gameAreaRingRadiusIn, gameAreaRingRadiusOut, 64]} /> 
+          <meshStandardMaterial color="white" transparent={true} opacity={0.5}/>
+        </mesh>
+        <mesh>
+          <ringGeometry args={[gameAreaRingRadiusIn, gameAreaRingRadiusOut, 64]} /> 
+          <meshStandardMaterial color="white" transparent={true} opacity={0.5}/>
+        </mesh>
+
+        <mesh>
+          <ringGeometry args={[gameAreaRingRadiusIn-0.7, gameAreaRingRadiusIn-0.7+0.02, 30, 1, 0, Math.PI /5]} />
+          <meshBasicMaterial color="rgb(135, 135, 135)"  side={THREE.DoubleSide} />
+        </mesh>
+        <mesh>
+          <ringGeometry args={[gameAreaRingRadiusIn-0.3, gameAreaRingRadiusIn-0.3+0.02, 30, 1, 180, Math.PI /3]} />
+          <meshBasicMaterial color="rgb(135, 135, 135)"  side={THREE.DoubleSide} />
+        </mesh>
+        <mesh>
+          <ringGeometry args={[gameAreaRingRadiusIn-0.3, gameAreaRingRadiusIn-0.3+0.02, 30, 1, -180, -Math.PI /8]} />
+          <meshBasicMaterial color="rgb(135, 135, 135)"  side={THREE.DoubleSide} />
+        </mesh>
+      </group>
 
     </group>
   );
 };
 
+export const ShowChoseSongData = ({ getChose }) => {
+  console.log("getChose:", getChose);  // 在這裡打印 getChose 的值
+
+  const song_name = getChose?.name || "Unknown Song";
+  const song_artist = getChose?.song_artist || "Unknown Artist";
+  const song_sheet = getChose?.sheet_artist || "Unknown Sheet Artist";
+  const song_level = getChose?.level || "Unknown Level";
+  const song_bpm = getChose?.bpm || "Unknown BPM";
+
+  const angle = useRef(null);
+
+  useFrame((state, delta) => {
+    if (!angle.current) return;
+    angle.current.rotation.z += delta * 0.5; // 調整旋轉速度
+  });
+
+  return (
+    <group>
+
+      <group ref={angle} position={[0, 0, 0]}>
+        <ShowGameSongTextStand shouldRotate={false} whichGet={song_name} offset={0} r={3.8} step={0.22} offset2={0} textSize={1.3}/>
+         <ShowGameSongTextStand shouldRotate={false} whichGet={song_name} offset={0} r={3.8} step={0.22} offset2={Math.PI} textSize={1.3}/>
+      </group>
+
+      <group position={[0, 0, 0]}>
+        <ShowGameSongText shouldRotate={false} whichGet={"artist"} offset={0} r={3.5} step={0.03} offset2={Math.PI} textSize={0.2} color={"rgb(100, 100, 100)"} isCenter={false}/>
+        <ShowGameSongText shouldRotate={false} whichGet={"sheet"} offset={0} r={3.5} step={0.03} offset2={Math.PI/1.35} textSize={0.2} color={"rgb(100, 100, 100)"} isCenter={false}/>
+        <ShowGameSongText shouldRotate={false} whichGet={"level"} offset={0} r={3.5} step={0.03} offset2={Math.PI*2/1.75} textSize={0.2} color={"rgb(100, 100, 100)"} isCenter={false}/>
+        <ShowGameSongText shouldRotate={false} whichGet={"bpm"} offset={0} r={3.5} step={0.03} offset2={Math.PI*2/1.6} textSize={0.2} color={"rgb(100, 100, 100)"} isCenter={false}/>
+
+
+        <ShowGameSongText shouldRotate={false} whichGet={song_artist} offset={0} r={3.2} step={0.07} offset2={Math.PI} textSize={0.3} color={"white"} isCenter={false}/>
+        <ShowGameSongText shouldRotate={false} whichGet={song_sheet} offset={0} r={3.2} step={0.07} offset2={Math.PI/1.35} textSize={0.3} color={"white"} isCenter={false}/>
+        <ShowGameSongText shouldRotate={false} whichGet={song_level} offset={0} r={3.2} step={0.07} offset2={0.39} textSize={0.3} color={"white"} isCenter={true}/>
+        <ShowGameSongText shouldRotate={false} whichGet={song_bpm} offset={0} r={3.2} step={0.07} offset2={0.75} textSize={0.3} color={"white"} isCenter={true}/>
+
+        <ShowGameSongText shouldRotate={false} whichGet={"In the name of  -Rotater- "} offset={0} r={3.2} step={0.05} offset2={0} textSize={0.2} color={"white"} isCenter={false}/>
+
+      </group>
+
+    </group>
+  );
+}
 
 //==========================================================================================
-//遊玩 2====================================================================================
+//遊玩 2 => 3===============================================================================
 //==========================================================================================
 export const Box = ({ position, getJudgeStatus , getTotalCombo}) => {
   const color = getJudgeStatus === 'M' ? 'red' : 'white';
-  const colorBloomValue = getJudgeStatus === 'M' ? 3 : 0.5;
   const transparency = useFadeOut(getTotalCombo);
 
   return (
@@ -547,22 +725,22 @@ export const Box = ({ position, getJudgeStatus , getTotalCombo}) => {
       {/* 圓形 座位 */}
       <mesh>
         <circleGeometry args={[seatRadius, 64]} /> 
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={colorBloomValue-0.2} transparent={true} opacity={transparency}/>
+        <meshStandardMaterial color={color} transparent={true} opacity={transparency}/>
       </mesh>
 
       {/* 環形 遊戲範圍 */}
       <mesh>
         <ringGeometry args={[gameAreaRingRadiusIn, gameAreaRingRadiusOut, 64]} /> 
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={colorBloomValue} transparent={true} opacity={transparency}/>
+        <meshStandardMaterial color={color} transparent={true} opacity={transparency}/>
       </mesh>
 
     </group>
   );
 };
 
-export const GameMusicComponent = ({ getChose, setMusicTimeMs, onTimeUpdate, setStatus , getStop , setStop , getStatus}) => {
+export const GameMusicComponent = ({ getChose, setStatus , getStop , setStop , getStatus }) => {
   const musicChose = useRef(null);
-  console.log(getStatus);
+
   useEffect(() => {
     if (!musicChose.current || !getChose?.mp3 ) return;
     if (getStatus == 2 || getStatus == 2.5) return;
@@ -574,42 +752,14 @@ export const GameMusicComponent = ({ getChose, setMusicTimeMs, onTimeUpdate, set
   useEffect(() => {
     if (!musicChose.current || !getChose?.mp3) return;
 
-      musicChose.current.pause();
-
     if (getStop) {
       musicChose.current.pause();
-    } else  {
+    } else {
       musicChose.current.play().catch(() => {
         console.warn('Audio autoplay blocked; user interaction is required to start playback.');
       });
     }
   }, [getChose?.mp3, getStop, getStatus]);
-
-  useEffect(() => {
-    if (!musicChose.current) return;
-
-    let rafId;
-
-    const tick = () => {
-      if (musicChose.current && !musicChose.current.paused) {
-        const nowSeconds = musicChose.current.currentTime;
-        const nowMs = Math.floor(nowSeconds * 1000);
-
-        if (typeof onTimeUpdate === 'function') {
-          onTimeUpdate(nowSeconds);
-        } else {
-          setMusicTimeMs(nowMs);
-        }
-      }
-
-      rafId = requestAnimationFrame(tick);
-    };
-
-    rafId = requestAnimationFrame(tick);
-
-    return () => cancelAnimationFrame(rafId);
-  }, [onTimeUpdate, setMusicTimeMs]);
-
 
   if (!getChose?.mp3) return null;
 
@@ -617,6 +767,7 @@ export const GameMusicComponent = ({ getChose, setMusicTimeMs, onTimeUpdate, set
 
   return (
     <>
+      <MusicTimeTracker audioRef={musicChose} />
       <audio 
         style={{ top: '50px', position: 'relative' }}
         ref={musicChose}
@@ -629,21 +780,59 @@ export const GameMusicComponent = ({ getChose, setMusicTimeMs, onTimeUpdate, set
         }}
         onPlay={() => setStop(false)}
         onPause={() => setStop(true)}
-        onEnded={() => setStatus(3)}
+        onEnded={() => setStatus(4)}
       />
     </>
   );
 }
 
-export const GameStar = ({ getGameStarPosition }) => {
+export const GameStar = ({ getGameStarPosition , getUseMouse , setStop , setStatus}) => {
 
-  const land = getGameStarPosition.land;
+  const angleVR = useVRStore((state) => state.angleR);
+  const mouseXR = useMouseStore((state) => state.mouseXR);
+  const playerAngle = getUseMouse ? angleVR : mouseXR;
 
-  console.log(getGameStarPosition);
+  const land = Number.isFinite(getGameStarPosition) ? getGameStarPosition : 0;
 
   const groupRef = useRef(null);
-  const angle = land * (Math.PI / 8) + Math.PI / 16;
-  const radius = gameAreaRingRadiusIn + 0.1;
+
+  const ringAngle = land * (Math.PI / 16) - Math.PI / 32; //取該軌道的中間值
+  const radius = gameAreaRingRadiusIn + 0.1;      // 距離玩家多遠(圓半徑)
+  const ringArcLength = Math.PI / 7;              // 裝飾圓弧長度
+  const textAngle = ringAngle + ringArcLength / 2; // 文字角度
+  const diff = Math.atan2(Math.sin(playerAngle - ringAngle), Math.cos(playerAngle - ringAngle));
+  const starRange = diff >= 0 && diff <= ringArcLength;
+  const color = starRange ? 'rgb(255, 255, 255)' : 'rgb(114, 64, 64)';
+  const positionOffest = starRange ? 0 : 0.5;
+
+
+  const [textX, textY] = [
+    Math.cos(textAngle) * (radius + 0.1),
+    Math.sin(textAngle) * (radius + 0.1),
+  ];
+
+  const [getTime, setTime] = useState(3); 
+  
+
+  useEffect(() => {
+    if (!starRange) return;
+
+    const interval = setInterval(() => {
+      setTime((prev) => { if (prev <= 1) { 
+                              clearInterval(interval); 
+                              setStatus(3);
+                              setStop(false);
+                          }
+        return prev - 1;
+      }
+    );}, 1000); 
+    
+    return () => {
+      clearInterval(interval);
+      setTime(3);
+    };
+  }, [starRange]); 
+
 
   useFrame((state, delta) => {
     if (!groupRef.current) return;
@@ -654,57 +843,141 @@ export const GameStar = ({ getGameStarPosition }) => {
 
     const progress = groupRef.current.userData.anima; // 0 ~ 1
 
-    const s = 1 + progress * 0.5;
-    groupRef.current.translateZ(s);
+    groupRef.current.position.z = progress * 0.2;
   });
 
+
   return (
-    <group ref={groupRef} position={[0, 0, 0]} rotation={[0, 0, angle]}>
-      <mesh>
-        <ringGeometry args={[radius, radius+0.2, 32]} />
-        <meshStandardMaterial
-          color="rgb(255, 236, 33)"
-          emissive="rgb(255, 236, 33)"
-          emissiveIntensity={3}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
+    <group ref={groupRef}>
+      <group position={[0, 0, 0.5 + positionOffest]}>
+        <group position={[0, 0, 0]} rotation={[0, 0, ringAngle]}>
+          <mesh>
+            <ringGeometry args={[radius, radius + 0.05, 32, 1, 0, ringArcLength]} />
+            <meshStandardMaterial
+              color={color}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+        </group>
+
+        <group position={[textX, textY, 0.7]} rotation={[0, 0, textAngle - Math.PI / 2]}>
+          <Text 
+            rotation={[Math.PI / 2, 0, 0]}
+            fontSize={1}
+            color={color}
+          >
+            STAR
+          </Text>
+        </group>
+
+        <group position={[textX, textY, 1.3]} rotation={[0, 0, textAngle - Math.PI / 2]}>
+          <Text 
+            rotation={[Math.PI / 2, 0, 0]}
+            fontSize={0.25}
+            color={color}
+          >
+            Click me to get STAR
+          </Text>
+        </group>
+
+        <group position={[textX, textY, 2.5]} rotation={[0, 0, textAngle - Math.PI / 2]}>
+          <Text 
+            rotation={[Math.PI / 2, 0, 0]}
+            fontSize={2}
+            color={color}
+          >
+            {getTime}
+          </Text>
+        </group>
+
+        <group position={[-textX, -textY, 0]} rotation={[0, 0, textAngle + Math.PI / 2]}>
+          {/* 內層 Text：只負責自己沿 X 軸向前立起來 */}
+          <Text 
+            rotation={[Math.PI / 2, 0, 0]}
+            fontSize={0.25}
+            color={'rgb(183, 183, 183)'}
+          >
+            Look your back, and click the STAR.
+          </Text>
+        </group>
+
+      </group>
     </group>
   );
 };
 
-export const PlayerMark = ({ getUseMouse , mouseXR}) => {
+export const PlayerMark = ({ getUseMouse }) => {
   const arcLong = (Math.PI / 16) + 0.5
   const halfArcLong = arcLong/2
 
-  const angleVR = useVRStore((state) => state.angleR);
-  const angle = getUseMouse ? angleVR : mouseXR; // 如果 getUseMouse 為 true，使用 VR 的角度，否則使用 0
+  const angleVR = useVRStore((state) => state.angleR);   // 訂閱VR角度
+  const mouseXR = useMouseStore((state) => state.mouseXR);  //訂閱mouse角度
+  const angle = getUseMouse ? angleVR : mouseXR ; // 如果 getUseMouse 為 true，使用 VR 的角度，否則使用 0
+
+  // const easingRef = useRef(null);
+
+  // useFrame(() => {
+  //   const easingAngle = easingRef.current.rotation.z;
+
+  //   let delta = angle - easingAngle;
+
+  //   if (delta < -Math.PI) {
+  //     delta += 2 * Math.PI;
+  //   } else if (delta > Math.PI) {
+  //     delta -= 2 * Math.PI;
+  //   }
+  //   easingRef.current.rotation.z += delta * 0.2;
+  // });
+  
   return (
     <mesh rotation={[0, 0, angle]} position={[0, 0, 0]}>
       <ringGeometry args={[playerMarkIn, playerMarkOut, 32, 1, -halfArcLong, arcLong ]} />
-      <meshStandardMaterial color={"rgb(255, 236, 33)"} emissive={"rgb(255, 236, 33)"} emissiveIntensity={3} side={2} />
+      <meshStandardMaterial color={"rgb(255, 236, 22)"} />
     </mesh>
   );
 };
 
 export const PuaseButtom = ({ getStop, setStop }) => {
+  const [hovered, setHovered] = useState(false);
+
+  const activeColor = getStop ? 'rgba(255, 255, 255)' : 'rgba(150, 150, 150)';
+  const circleBgColor = hovered ? 'rgba(255, 255, 255)' : 'rgba(0, 0, 0)';
+
   return (
-    <group position={[0, 0, 0.01]}>
+    <group
+      position={[0, 0, 0.05]}
+      onPointerDown={() => setStop((prev) => !prev)}
+      onPointerOver={() => setHovered(true)}
+      onPointerOut={() => setHovered(false)}
+    >
+      {/* 外層圓形邊框  */}
+      <mesh position={[0, 0, 0]}>
+        <ringGeometry args={[0.5, 0.52, 32]} />
+        <meshBasicMaterial color={activeColor}  side={THREE.DoubleSide} opacity={0.6} />
+      </mesh>
+
+      {/*  圓形背景  */}
+      <mesh position={[0, 0, -0.01]}>
+        <circleGeometry args={[0.52, 32]} />
+        <meshBasicMaterial color={circleBgColor}  side={1} transparent opacity={0.6} />
+      </mesh>
+
+      {/* 中心圖示文字 */}
       <Text
-        position={[0, 0, 0]}
-        fontSize={0.32}
-        color="white"
+        position={[0, 0, 0.01]} // 播號箭頭視覺偏右，微調 0.05 水平居中
+        fontSize={0.6}
+        color={activeColor}
         anchorX="center"
         anchorY="middle"
-        onPointerDown={() => setStop(prev => !prev)}
+        fillOpacity={0.8}
       >
-        {getStop ? 'Resume' : 'Pause'}
+        {getStop ? '▶' : '⏸'}
       </Text>
     </group>
   );
 };
 
-export const JudgeTextComponent = ({ radius = 4.2, getJudgeStatus , getTotalCombo}) => {
+export const JudgeTextComponent = ({ getJudgeStatus , getTotalCombo}) => {
   const judgeText = 
     getJudgeStatus === 'P' ? 'PERFECT' : 
     getJudgeStatus === 'G' ? 'GOOD' : 
@@ -712,11 +985,12 @@ export const JudgeTextComponent = ({ radius = 4.2, getJudgeStatus , getTotalComb
 
   const color = getJudgeStatus === 'M' ? 'red' : 'white';
   const transparency = useFadeOut(getTotalCombo);
+  const radius = gameAreaRingRadiusIn
 
   if (!judgeText) return null;
 
   const chars = judgeText.split("");
-  const angleStep = 0.1; 
+  const angleStep = 0.2; 
 
   return (
     <group>
@@ -727,29 +1001,31 @@ export const JudgeTextComponent = ({ radius = 4.2, getJudgeStatus , getTotalComb
         const y = Math.sin(angle) * radius;
 
         return (
-          <Text
-            key={`${char}-${i}`}
-            position={[x, y, 0]}
-            rotation={[0, 0, angle - Math.PI / 2]}
-            fontSize={0.4}
-            color={color}
-            anchorX="center"
-            anchorY="middle"
-            fillOpacity={transparency}
-          >
-            {char}
-          </Text>
+          <group key={`${char}-${i}`} position={[x, y, 1.2]} rotation={[0, 0, angle - Math.PI / 2]}>
+            <Text
+              key={`${char}-${i}`}
+              rotation={[Math.PI/2, 0, 0]}
+              fontSize={1}
+              color={color}
+              anchorX="center"
+              anchorY="middle"
+              fillOpacity={transparency}
+            >
+              {char}
+            </Text>
+          </group>
         );
       })}
     </group>
   );
 };
 
-export const CommboTextComponent = ({ radius = 4.2, getCommbo , getTotalCombo}) => {
+export const CommboTextComponent = ({ getCommbo , getTotalCombo}) => {
 
   const chars = String(getCommbo).split("");
   const transparency = useFadeOut(getTotalCombo);
   const angleStep = 0.1; 
+  const radius = gameAreaRingRadiusIn ;
 
   return (
     <group rotation={[0, 0, Math.PI]}>
@@ -760,18 +1036,19 @@ export const CommboTextComponent = ({ radius = 4.2, getCommbo , getTotalCombo}) 
         const y = Math.sin(angle) * radius;
 
         return (
-          <Text
-            key={i}
-            position={[x, y, 0]}
-            rotation={[0, 0, angle - Math.PI / 2]}
-            fontSize={0.4}
-            color="white"
-            anchorX="center"
-            anchorY="middle"
-            fillOpacity={transparency}
-          >
-            {char}
-          </Text>
+          <group key={i} position={[x, y, 1.2]} rotation={[0, 0, angle - Math.PI / 2]}>
+            <Text
+              key={i}
+              rotation={[Math.PI/2, 0, 0]}
+              fontSize={1}
+              color="white"
+              anchorX="center"
+              anchorY="middle"
+              fillOpacity={transparency}
+            >
+              {char}
+            </Text>
+          </group>
         );
       })}
     </group>
@@ -779,7 +1056,7 @@ export const CommboTextComponent = ({ radius = 4.2, getCommbo , getTotalCombo}) 
 };
   
 export const BackImg = ({ getChose }) => {
-  const proxyImageUrl = useTexture(getChose?.img ? `${imageProxyURL}?url=${encodeURIComponent(getChose.img)}` : undefined);
+  const proxyImageUrl = useTexture(getChose?.img ? `${getChose.img}?url=${encodeURIComponent(getChose.img)}` : undefined);
   
   // 旋轉
   const meshRef = useRef();
@@ -792,83 +1069,191 @@ export const BackImg = ({ getChose }) => {
 
 
   return (
-      <mesh ref={meshRef} position={[0, 0, -0.1]}> 
-        <circleGeometry args={[gameAreaRingRadiusOut, 32]} /> 
-        <meshBasicMaterial
-          map={proxyImageUrl || null}
-          color={proxyImageUrl ? '#272727' : '#111111'} 
-        />
-      </mesh>
+     <group>
+        <mesh ref={meshRef} position={[0, 0, -0.1]}> 
+          <circleGeometry args={[gameAreaRingRadiusOut, 32]} /> 
+          <meshBasicMaterial
+            map={proxyImageUrl || null}
+            color={proxyImageUrl ? '#444444' : '#111111'} 
+          />
+        </mesh>
+
+        <mesh>
+          <ringGeometry args={[gameAreaRingRadiusIn, gameAreaRingRadiusIn+0.005, 64]} />
+          <meshBasicMaterial color={'#ffffff'} />
+        </mesh>
+      </group>
     );
 }
 
 
 //==========================================================================================
-//分數結算3 =================================================================================
+//分數結算4 =================================================================================
 //==========================================================================================
+export const ShowChoseSongScoresImg = ({ getChose , setStatus}) => {
+  const texture = useTexture(getChose?.img ? `${getChose.img}?url=${encodeURIComponent(getChose.img)}` : undefined);
 
+  const scale = PopAnimation(getChose , 0.8, 0.8, 1, 1, 30);
 
-export const ShowChoseSongScoresImg = ({ getChose }) => {
-  const texture = useTexture(getChose?.img ? `${imageProxyURL}?url=${encodeURIComponent(getChose.img)}` : undefined);
+  const[isTouch , setIsTouch] = useState(false);
+  const angleImg = useRef(0);
+  const angleRing = useRef(0);  
+
+  const color = isTouch ? 'rgb(255, 224, 21)' : 'rgb(91, 91, 91)';
+
+  
+  useFrame((state, delta) => {
+    if (!angleImg.current) return;
+
+    if (isTouch && angleImg.current) {
+      angleImg.current.rotation.z += delta * 0.5;
+    }
+  });
+
+  useFrame((state, delta) => {
+    if (!angleRing.current) return;
+
+    angleRing.current.rotation.z += delta * 0.5;
+    
+    const targetScale = isTouch ? 1.5 : 0.0;
+    angleRing.current.scale.x = THREE.MathUtils.damp(angleRing.current.scale.x, targetScale, 20, delta);
+    angleRing.current.scale.y = THREE.MathUtils.damp(angleRing.current.scale.y, targetScale, 20, delta);
+  });
 
   return (
-    <group position={[0, 1.8, 0.1]}>
-      <mesh>
-        <circleGeometry args={[1.1, 32]} />
-        <meshBasicMaterial map={texture || null} color={texture ? '#ffffff' : '#262626'} />
+    <group ref={scale}>
+      <group>
+        <group ref={angleImg} position={[0, 2.5, 0.1]}>
+          <mesh position={[0, 0, 0]}>
+            <circleGeometry args={[1.3, 32]} />
+            <meshBasicMaterial color= {color}/>
+          </mesh>
+
+          <mesh position={[0, 0, 0.02]}
+            onPointerEnter={() => setIsTouch(true)}
+            onPointerLeave={() => setIsTouch(false)}
+            onPointerDown={() => setStatus(0)}
+          >
+            <circleGeometry args={[1.2, 32]} />
+            <meshBasicMaterial
+              map={texture || null}
+              color={texture ? '#ffffff' : '#262626'}
+              transparent
+              alphaTest={0.05}
+            />
+          </mesh>
+        </group>
+
+        <group ref={angleRing} position={[0, 2.5, 0.5]}>
+          <mesh>
+            <torusGeometry args={[1, 0.02, 16, 32, 1.5]} />
+            <meshBasicMaterial color='rgb(255, 255, 255)' transparent/>
+          </mesh>
+
+          <mesh rotation={[0, 0, Math.PI]}>
+            <torusGeometry args={[1, 0.02, 16, 32, 1.5]} />
+            <meshBasicMaterial color="rgb(255, 255, 255)" transparent />
+          </mesh>
+        </group>
+
+        <ShowGameSongOverButtom  isTouch={isTouch} texts={"Turn to menu"} offset={Math.PI}/>
+        <ShowGameSongOverButtom  isTouch={isTouch} texts={"Turn to menu"} offset={0}/>
+      </group>
+    </group>
+  );
+}
+
+const ShowGameSongOverButtom = ({ isTouch , texts , offset }) => {
+
+  const characters = Array.from(String(texts ?? ''));
+  const angleStep = 0.2;
+  const r = 1;
+
+  const angle = useRef(0);
+
+  useFrame((state, delta) => {
+    if (!angle.current) return;
+
+    if(isTouch){
+      angle.current.rotation.z += delta * 0.5;
+    }
+
+    const targetScale = isTouch ? 1.5 : 0.0;
+    angle.current.scale.x = THREE.MathUtils.damp(angle.current.scale.x, targetScale, 20, delta);
+    angle.current.scale.y = THREE.MathUtils.damp(angle.current.scale.y, targetScale, 20, delta);
+  });
+
+
+  return (
+    <group ref={angle} position={[0, 2.5, 1.0]} rotation={[0, 0, offset || 0]}>
+      {characters.map((char, i) => {
+        const baseAngle = (i - (characters.length - 1) / 2) * angleStep * -1;
+        const angle = baseAngle ;
+        const x = Math.cos(angle) * r;
+        const y = Math.sin(angle) * r;
+
+        return (
+          <group position={[x, y, 0.01]} rotation={[0, 0, angle - Math.PI / 2]}>
+            <Text
+              key={`${char}-${i}`}
+              rotation={[Math.PI/2, 0, 0]}
+              fontSize={0.3}
+              color="white"
+              anchorX="center"
+              anchorY="middle"
+            >
+              {char}
+            </Text>
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
+export const ShoeGameSongBox = ( getStatus ) => {
+  const scale = PopAnimation(getStatus , 0.8, 0.8, 1, 1, 30);
+  return (
+    <group ref={scale}>
+      <mesh position={[0, 0, 0]}>
+        <ringGeometry args={[gameAreaRingRadiusIn - 0.5, gameAreaRingRadiusIn - 2, 64]} />
+        <meshStandardMaterial color={'#353535'} side={THREE.DoubleSide} transparent={true} opacity={0.5} />
       </mesh>
     </group>
   );
 }
 
+export const ShoeGameSongText = ({ getCommbo , getChose}) => {
+    const perfect = usePerfectStore((state) => state.perfect);  // 訂閱 zustand  的 setPerfect
+    const good = useGoodStore((state) => state.good);           // 訂閱 zustand  的 setGood
+    const miss = useMissStore((state) => state.miss);           // 訂閱 zustand  的 setMiss 
 
-export const ShowGameSongText = ({ shouldRotate, whichGet, offset , r, a , offset2 , textSize}) => {
-
-  const groupRef = useRef(null);
-
-  const characters = Array.from(String(whichGet ?? ''));
-  const isChinese = /[\u4e00-\u9fa5]/.test(whichGet);
-  const angleStep = isChinese ? a + 0.1 : a;
-
-
-  useFrame((state, delta) => {
-    if (shouldRotate && groupRef.current) {
-      groupRef.current.rotation.z += delta * 0.2;
-    }
-  });
+     const hitPresent = Math.round(((perfect + good) / (perfect + good + miss)) * 100) ;
 
   return (
-    // 3. 綁定 groupRef 到 DOM/Three 節點
-    <group ref={groupRef} position={[0, 0, 0]} rotation={[0, 0, offset2 || 0]}>
-      {characters.map((char, i) => {
-        // 使用傳入的靜態 offset 排列文字弧度
-        const baseAngle = (i - (characters.length - 1) / 2) * angleStep;
-        const angle = baseAngle + offset;
-        const x = Math.cos(angle) * r;
-        const y = Math.sin(angle) * r;
-
-        return (
-          <Text
-            key={`${char}-${i}`}
-            position={[x, y, 0.01]}
-            rotation={[0, 0, angle + Math.PI / 2]}
-            fontSize={textSize}
-            color="white"
-            anchorX="center"
-            anchorY="middle"
-          >
-            {char}
-          </Text>
-        );
-      })}
+    <group>
+      <ShowGameSongText shouldRotate={false} whichGet={perfect} offset={-0.9} r={2.5} step={0.1} offset2={0} textSize={0.42} color={"white"} isCenter={true}/>
+      <ShowGameSongText shouldRotate={false} whichGet={good} offset={-0.1} r={2.6} step={0.1} offset2={0} textSize={0.42} color={"white"} isCenter={true}/>
+      <ShowGameSongText shouldRotate={false} whichGet={miss} offset={0.6} r={2.6} step={0.1} offset2={0} textSize={0.42} color={"white"} isCenter={true}/>
+      <ShowGameSongText shouldRotate={false} whichGet={getCommbo} offset={3.7} r={2.6} step={0.1} offset2={0} textSize={0.42} color={"white"} isCenter={true}/>
+      <ShowGameSongText shouldRotate={false} whichGet={hitPresent} offset={2.6} r={2.6} step={0.1} offset2={0} textSize={0.42} color={"white"} isCenter={true}/>
+      
+      <ShowGameSongText shouldRotate={false} whichGet={'PREFECT'} offset={-0.9} r={3.3} step={0.1} offset2={0} textSize={0.42} color={"white"} isCenter={true}/>
+      <ShowGameSongText shouldRotate={false} whichGet={'GOOD'} offset={-0.1} r={3.2} step={0.1} offset2={0} textSize={0.42} color={"white"} isCenter={true}/>
+      <ShowGameSongText shouldRotate={false} whichGet={'MISS'} offset={0.6} r={3.2} step={0.1} offset2={0} textSize={0.42} color={"white"} isCenter={true}/>
+      <ShowGameSongText shouldRotate={false} whichGet={'MAXCOMMBO'} offset={3.7} r={3.2} step={0.1} offset2={0} textSize={0.42} color={"white"} isCenter={true}/>
+      <ShowGameSongText shouldRotate={false} whichGet={'HIT%'} offset={2.6} r={3.2} step={0.1} offset2={0} textSize={0.42} color={"white"} isCenter={true}/>
+      
+      <ShowGameSongTextStand shouldRotate={true} whichGet={getChose.name} offset={0} r={gameAreaRingRadiusOut-0.2} step={0.2} offset2={0} textSize={2}/>
+      <ShowGameSongTextStand shouldRotate={true} whichGet={getChose.name} offset={0} r={gameAreaRingRadiusOut-0.2} step={0.2} offset2={Math.PI} textSize={2}/>
     </group>
   );
-};
-
+}
 
 //==========================================================================================
-// VR角度取得================================================================================
+// 持續資料取得================================================================================
 //==========================================================================================
+ // VR =====================================================================================
 export const VRTracker = () => {
   const setAngles = useVRStore((state) => state.setAngles);
   
@@ -882,9 +1267,56 @@ export const VRTracker = () => {
     const angleZR = rotation.z;
     const angleZLimR = ((angleZR + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
 
-    // 直接更新 Zustand store
-    setAngles(angleZLimR);
+    setAngles(angleZLimR);  // 直接更新 Zustand store
   });
+
+  return null;
+};
+
+ // mouse =====================================================================================
+export const MouseRXTracker = () => {
+  const setMouseXR = useMouseStore.getState().setMouseXR;
+
+  useEffect(() => {
+    const handleMouseMove = (event) => {
+      const width = window.innerWidth;
+      if (width === 0) return;
+      const nextAngle = ((event.clientX / width) * Math.PI * 2 + Math.PI) % (Math.PI * 2);
+      setMouseXR(nextAngle);  // 角度寫入 Zustand
+    };
+
+    // window.addEventListener(...)：告訴瀏覽器【監聽全域視窗的某個動作】
+    // pointermove'：監聽的事件名稱，同時支援滑鼠移動、觸控螢幕滑動（Touch）與觸控筆（Stylus）
+    // handleMouseMove：事件發生時要執行的函式（Callback）
+    window.addEventListener('pointermove', handleMouseMove);
+    // return () => { ... }：這是在 React useEffect 中特有的清理語法。當元件卸載（Unmount，例如使用者換頁）或元件重新渲染前，React 會自動執行這個 return 後面的函式。
+    return () => window.removeEventListener('pointermove', handleMouseMove);
+  }, [setMouseXR]);
+
+  return null;
+};
+
+// 音樂時間tracker =====================================================================================
+export const MusicTimeTracker = ({ audioRef }) => {
+  const setMusicTimeMs = useMusicTimeStore.getState().setMusicTimeMs;
+
+  useEffect(() => {
+    if (!audioRef?.current) return;
+
+    let rafId;
+
+    const tick = () => {
+      const audio = audioRef.current;
+      if (audio && !audio.paused) {
+        setMusicTimeMs(Math.floor(audio.currentTime * 1000));
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+
+    rafId = requestAnimationFrame(tick);
+
+    return () => cancelAnimationFrame(rafId);
+  }, [audioRef, setMusicTimeMs]);
 
   return null;
 };
@@ -904,14 +1336,16 @@ export const SliderComponent = ({setVal}) => {
 
 export const StatusControl = ({ setStatus }) => {
   const handleKeyDown = (event) => {
-    if (event.key === 'a') {
+    if (event.key === 'z') {
       setStatus(0);
-    } else if (event.key === 's') {
+    } else if (event.key === 'x') {
       setStatus(1);
-    } else if (event.key === 'd') {
+    } else if (event.key === 'c') {
       setStatus(2);
-    } else if (event.key === 'f') {
+    } else if (event.key === 'v') {
       setStatus(3);
+    } else if (event.key === 'b') {
+      setStatus(4);
     }
   };
 
@@ -952,9 +1386,9 @@ export const SideBar = ({ setUseMouse , setRotateCanva}) => {
 
     return (
     <>
-      <Button type="primary" onClick={showDrawer}>
+      < UnorderedListOutlined className="FixButtom"  onClick={showDrawer}>
         Fix Pabe
-      </Button>
+      </ UnorderedListOutlined>
       <Drawer
         title="Fix"
         closable={{ 'aria-label': 'Close Button' }}
