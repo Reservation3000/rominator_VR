@@ -22,8 +22,11 @@ export const startPosition = gameAreaRingRadiusIn;     //起始位置 + 遊戲�
 export const endPosition = seatRadius + 0.15 ;         //結束判定位置
 export const noteSpeed = 0.05;                         //每經過 1Frame，音符應該移動多少距離（單位_距離 / 影格）
 // 判定
-export const perfectRange = 15;                 // perfect 判定角度範圍
-export const goodRange = 30;                    // good 判定角度範圍
+export const perfectRange = 15;       // perfect 判定角度範圍
+export const goodRange = 30;          // good 判定角度範圍
+export const prefectTime = 30 ;       // perfect 判定時間範圍
+export const lifeTime = 50;           // 生命時間
+
 // note
 export const everyLandAngle = Math.PI / 16;     // 單一軌道的角度寬度
 export const arcLong = everyLandAngle + 0.4;    // 音符的長度

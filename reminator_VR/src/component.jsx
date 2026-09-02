@@ -9,7 +9,7 @@ import * as THREE from 'three';
 
 import { 
    useFadeOut 
-}from './hooks/hooks.jsx'; 
+}from './hooks.jsx'; 
 
 import {
   SongCard3DRadius,
@@ -31,7 +31,10 @@ import { useVRStore ,
          useMusicTimeStore , 
          usePerfectStore , 
          useGoodStore , 
-         useMissStore 
+         useMissStore,
+         useComboStore,
+         useTotalComboStore,
+         useJudgeStatus
 } from './store.js';
 
 
@@ -54,7 +57,7 @@ import { useVRStore ,
     };
 
     loadSongs();
-  }, []);
+  }, []);  //只執行一次
 
   return null; // 不需要渲染任何內容
   }
@@ -617,6 +620,10 @@ export const ShowChoseSong = ({ getChose, setStatus }) => {
   const scale = PopAnimation(getChose , 0.8, 0.8, 1, 1, 30);
 
   useEffect(() => {
+    ResetSongJudgeData();
+  }, []);
+
+  useEffect(() => {
     let interval = null;
     
     if (getTime > 0) {
@@ -731,12 +738,32 @@ export const ShowChoseSongData = ({ getChose }) => {
   );
 }
 
+function ResetSongJudgeData(){
+  const setPerfect = usePerfectStore.getState().setPerfect;
+  const setGood = useGoodStore.getState().setGood;
+  const setMiss = useMissStore.getState().setMiss;
+  const setCombo = useComboStore.getState().setCombo;
+  const setTotalCombo = useTotalComboStore.getState().setTotalCombo;
+  const setJudgeStatus = useJudgeStatus.getState().setJudgeStatus;
+
+  setPerfect(0);
+  setGood(0);
+  setMiss(0);
+  setCombo(0);
+  setTotalCombo(0);
+  setJudgeStatus(null);
+};
+
 //==========================================================================================
 //遊玩 2 => 3===============================================================================
 //==========================================================================================
-export const Box = ({ position, getJudgeStatus , getTotalCombo}) => {
-  const color = getJudgeStatus === 'M' ? 'red' : 'white';
-  const transparency = useFadeOut(getTotalCombo);
+export const Box = ({ position }) => {
+
+  const judgeStatus = useJudgeStatus((state) => state.judgeStatus);
+  const totalCombo = useTotalComboStore((state) => state.totalCombo);
+
+  const color = judgeStatus === 'M' ? 'red' : 'white';
+  const transparency = useFadeOut(totalCombo , 0 , 1);
 
   return (
     <group position={position}>
@@ -961,16 +988,17 @@ export const PlayerMark = ({ getUseMouse }) => {
     const mouseXR = useMouseStore.getState().mouseXR;     //訂閱mouse角度
     const angle = getUseMouse ? angleVR : mouseXR;        // 如果 getUseMouse 為 true，使用 VR 的角度，否則使用 0
 
-    const easingAngle = angleRef.current.rotation.z;
+    if (!Number.isFinite(angle)) return;
 
-    // easing計算
-    let delta = angle - easingAngle;
-    if (delta < -Math.PI) {
-      delta += 2 * Math.PI;
-    } else if (delta > Math.PI) {
-      delta -= 2 * Math.PI;
+    if(angleRef.current.rotation.z <= 0){
+      angleRef.current.rotation.z -= Math.PI*2
+    }else if(angleRef.current.rotation.z >= 360){
+      angleRef.current.rotation.z =+ Math.PI*2
     }
-    angleRef.current.rotation.z += delta * 0.2;
+
+    const unLimAngle = angle % (Math.PI * 2);
+    angleRef.current.rotation.z = unLimAngle;
+
   });
   
   
@@ -1022,18 +1050,19 @@ export const PuaseButtom = ({ getStop, setStop }) => {
   );
 };
 
-export const JudgeTextComponent = ({
-  getJudgeStatus,
-  getTotalCombo,
-}) => {
+export const JudgeTextComponent = ( ) => {
+
+  const judgeStatus = useJudgeStatus((state) => state.judgeStatus);
+  const totalCombo = useTotalComboStore((state) => state.totalCombo);
+
   const judgeText =
-    getJudgeStatus === "P" ? "PERFECT" :
-    getJudgeStatus === "G" ? "GOOD" :
-    getJudgeStatus === "M" ? "MISS" :
+    judgeStatus === "P" ? "PERFECT" :
+    judgeStatus === "G" ? "GOOD" :
+    judgeStatus === "M" ? "MISS" :
     null;
 
-  const color = getJudgeStatus === "M" ? "red" : "white";
-  const transparency = useFadeOut(getTotalCombo);
+  const color = judgeStatus === "M" ? "red" : "white";
+  const transparency = useFadeOut(totalCombo , 0 , 1);
   const radius = gameAreaRingRadiusIn;
   const angleStep = 0.2;
 
@@ -1074,12 +1103,18 @@ export const JudgeTextComponent = ({
   );
 };
 
-export const CommboTextComponent = ({ getCommbo , getTotalCombo}) => {
+export const CommboTextComponent = ( ) => {
 
-  const chars = String(getCommbo).split("");
-  const transparency = useFadeOut(getTotalCombo);
+  const combo = useComboStore((state) => state.combo);
+  const totalCombo = useTotalComboStore((state) => state.totalCombo);
+  const judgeStatus = useJudgeStatus((state) => state.judgeStatus);
+
+  const chars = String(combo).split("");
+  const transparency = useFadeOut(totalCombo , 0, 1);
   const angleStep = 0.1; 
   const radius = gameAreaRingRadiusIn ;
+
+  const color = judgeStatus === "M" ? "red" : "white";
 
   return (
     <group rotation={[0, 0, Math.PI]}>
@@ -1095,7 +1130,7 @@ export const CommboTextComponent = ({ getCommbo , getTotalCombo}) => {
               key={i}
               rotation={[Math.PI/2, 0, 0]}
               fontSize={1}
-              color="white"
+              color={color}
               anchorX="center"
               anchorY="middle"
               fillOpacity={transparency}
@@ -1109,11 +1144,17 @@ export const CommboTextComponent = ({ getCommbo , getTotalCombo}) => {
   );
 };
 
-// ref
-export const BackImg = ({ getChose }) => {
+export const BackImg = ({ getChose ,}) => {
   const proxyImageUrl = useTexture(getChose?.img ? `${getChose.img}?url=${encodeURIComponent(getChose.img)}` : undefined);
   
   const meshRef = useRef();
+
+
+  const totalCombo = useTotalComboStore((state) => state.totalCombo);
+  const judgeStatus = useJudgeStatus((state) => state.judgeStatus);
+
+  const color = judgeStatus === "M" ? "rgb(92, 29, 29)" : "#444444";
+  const transparency = useFadeOut(totalCombo , 0.6 , 1);
 
   useFrame((state, delta) => {
     if (meshRef.current) {
@@ -1128,7 +1169,9 @@ export const BackImg = ({ getChose }) => {
           <circleGeometry args={[gameAreaRingRadiusOut, 32]} /> 
           <meshBasicMaterial
             map={proxyImageUrl || null}
-            color={proxyImageUrl ? '#444444' : '#111111'} 
+            color={proxyImageUrl ? color : '#ff03fb'} 
+            transparent={true}
+            opacity={transparency}
           />
         </mesh>
 
@@ -1247,9 +1290,8 @@ const ShowGameSongOverButtom = ({ isTouch , texts , offset }) => {
         const y = Math.sin(angle) * r;
 
         return (
-          <group position={[x, y, 0.01]} rotation={[0, 0, angle - Math.PI / 2]}>
+          <group key={`${texts}-${offset}-${i}`} position={[x, y, 0.01]} rotation={[0, 0, angle - Math.PI / 2]}>
             <Text
-              key={`${char}-${i}`}
               rotation={[Math.PI/2, 0, 0]}
               fontSize={0.3}
               color="white"
@@ -1277,19 +1319,21 @@ export const ShoeGameSongBox = ( getStatus ) => {
   );
 }
 
-export const ShoeGameSongText = ({ getCommbo , getChose}) => {
+export const ShoeGameSongText = ({ getChose }) => {
     const perfect = usePerfectStore((state) => state.perfect);  // 訂閱 zustand  的 setPerfect
     const good = useGoodStore((state) => state.good);           // 訂閱 zustand  的 setGood
-    const miss = useMissStore((state) => state.miss);           // 訂閱 zustand  的 setMiss 
+    const miss = useMissStore((state) => state.miss);           // 訂閱 zustand  的 setMiss
+    const combo = useComboStore((state) => state.combo);
 
-     const hitPresent = Math.round(((perfect + good) / (perfect + good + miss)) * 100) ;
+    const hitPresent = Math.round(((perfect + good) / (perfect + good + miss)) * 100) ;
+
 
   return (
     <group>
       <ShowGameSongText shouldRotate={false} whichGet={perfect} offset={-0.9} r={2.5} step={0.1} offset2={0} textSize={0.42} color={"white"} isCenter={true}/>
       <ShowGameSongText shouldRotate={false} whichGet={good} offset={-0.1} r={2.6} step={0.1} offset2={0} textSize={0.42} color={"white"} isCenter={true}/>
       <ShowGameSongText shouldRotate={false} whichGet={miss} offset={0.6} r={2.6} step={0.1} offset2={0} textSize={0.42} color={"white"} isCenter={true}/>
-      <ShowGameSongText shouldRotate={false} whichGet={getCommbo} offset={3.7} r={2.6} step={0.1} offset2={0} textSize={0.42} color={"white"} isCenter={true}/>
+      <ShowGameSongText shouldRotate={false} whichGet={combo} offset={3.7} r={2.6} step={0.1} offset2={0} textSize={0.42} color={"white"} isCenter={true}/>
       <ShowGameSongText shouldRotate={false} whichGet={hitPresent} offset={2.6} r={2.6} step={0.1} offset2={0} textSize={0.42} color={"white"} isCenter={true}/>
       
       <ShowGameSongText shouldRotate={false} whichGet={'PREFECT'} offset={-0.9} r={3.3} step={0.1} offset2={0} textSize={0.42} color={"white"} isCenter={true}/>
@@ -1335,7 +1379,7 @@ export const MouseRXTracker = () => {
     const handleMouseMove = (event) => {
       const width = window.innerWidth;
       if (width === 0) return;
-      const nextAngle = ((event.clientX / width) * Math.PI * 2 + Math.PI) % (Math.PI * 2);
+      const nextAngle = (event.clientX / width) * Math.PI * 6 + Math.PI;
       setMouseXR(nextAngle);  // 角度寫入 Zustand
     };
 

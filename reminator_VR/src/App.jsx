@@ -4,6 +4,8 @@ import { useState , useRef , useMemo } from "react";
 import { OrbitControls , Environment } from '@react-three/drei'; 
 import "./App.css";
 
+import * as Notes from './notes.jsx';
+
 import {
   LoadData,
   Box , 
@@ -31,14 +33,13 @@ import {
   ShoeGameSongBox
 } from "./component.jsx";
 
-
-import { LogicOfNotes , LogicOfRotate , LogicOfDarg } from "./notesComponent"
-
 import { useMusicTimeStore } from "./store.js";
 
 import { 
   HDRIProxyURL,
  } from "./constants.js";
+
+
 
 const xrStore = createXRStore({
   originReferenceSpace: 'local-floor', // 讓系統以地面為基準計算高度
@@ -46,8 +47,6 @@ const xrStore = createXRStore({
   hand: true,        // 啟用手部模型與捏合手勢射線
   controller: true,  // 啟用控制器
 });
-
-
 
 //===============================
 //  App 
@@ -71,10 +70,6 @@ function App() {
   const [getStop, setStop] = useState(true);       // 遊戲暫停按鈕(false撥放)
   const [getGameStarPosition, setGameStarPosition] = useState(0); // 遊戲開始位置
 
-  const [getCommbo, setCommbo] = useState(0);
-  const [getJudgeStatus, setJudgeStatus] = useState(null); //判定狀態
-  const [getTotalCombo, setTotalCombo] = useState(0); //總共連擊數
-
 
 
   const songTotal = getsongs.length;       // 有幾首歌
@@ -93,7 +88,7 @@ function App() {
       <LoadData setSongs={setSongs} />
 
       <Canvas gl={{ toneMappingExposure: 1 }} 
-              camera={{ fov: 50, near: 0.1, far: 20, position: [0, 0, 0]}}>
+              camera={{ fov: 50, near: 0.1, far: 20, position: [0, 0, 10]}}>
 
         <XR store={xrStore}>
 
@@ -103,8 +98,8 @@ function App() {
           <MouseRXTracker  />
           <Environment files={HDRIProxyURL} background />
           <ambientLight intensity={3} color="white" />
-
           <group className="canva" position={[0, 0, 0]} rotation={[rotateCanvaX, 0, 0]}>
+            <PlayerMark getUseMouse={getUseMouse} />
             {(getStatus === 0) && (
               <group>
                 <Roundabout />
@@ -134,14 +129,11 @@ function App() {
               </group>
             )}
 
-            {(getStatus === 2 || getStatus === 3) && (
-            <PlayerMark getUseMouse={getUseMouse} />
-          )}
 
             {(getStatus === 2) && (
               <group>
                   <BackImg radius={3.93} getChose={getChose} />
-                  <Box getJudgeStatus={getJudgeStatus} getTotalCombo={getTotalCombo} />
+                  <Box/>
                   <GameStar getGameStarPosition={getGameStarPosition} getUseMouse={getUseMouse} setStop={setStop} setStatus={setStatus}/>
             </group>
             )}
@@ -150,28 +142,14 @@ function App() {
               <group>
                   <ambientLight intensity={2} />
                   <BackImg radius={3.93} getChose={getChose} />
-                  <LogicOfNotes musicTimeMs={musicTimeMs}
-                                onlyNotes={onlyNotes}
-                                setCommbo={setCommbo} setTotalCombo={setTotalCombo}
-                                setJudgeStatus={setJudgeStatus}
-                                getUseMouse={getUseMouse}
-                  />
-                  <LogicOfDarg  musicTimeMs={musicTimeMs}
-                                onlyDrag={onlyDrag}
-                                setCommbo={setCommbo} setTotalCombo={setTotalCombo}
-                                setJudgeStatus={setJudgeStatus}
-                                getUseMouse={getUseMouse}
-                  />
-                  <LogicOfRotate  musicTimeMs={musicTimeMs}
-                                  onlyRotate={onlyRotate}
-                                  setCommbo={setCommbo} setTotalCombo={setTotalCombo}
-                                  setJudgeStatus={setJudgeStatus}
-                                  getUseMouse={getUseMouse}
-                  />
-                  <PlayerMark getUseMouse={getUseMouse} />
-                  <Box  getJudgeStatus={getJudgeStatus} getTotalCombo={getTotalCombo} />
-                  <JudgeTextComponent key={`judge-${getTotalCombo}`} getJudgeStatus={getJudgeStatus} getTotalCombo={getTotalCombo} />
-                  <CommboTextComponent key={`combo-${getTotalCombo}`} getCommbo={getCommbo} getTotalCombo={getTotalCombo} />
+                  
+                  <Notes.LogicOfNotes musicTimeMs={musicTimeMs} onlyNotes={onlyNotes} getUseMouse={getUseMouse}  />
+                  <Notes.LogicOfDarg  musicTimeMs={musicTimeMs} onlyDrag={onlyDrag} getUseMouse={getUseMouse} />
+                  <Notes.LogicOfRotate  musicTimeMs={musicTimeMs} onlyRotate={onlyRotate} getUseMouse={getUseMouse} />
+
+                  <Box  />
+                  <JudgeTextComponent />
+                  <CommboTextComponent />
                   <PuaseButtom getStop={getStop} setStop={setStop} />
                   <GameMusicLogic gameAudioRef={gameAudioRef} getChose={getChose} getStop={getStop} getStatus={getStatus} />
             </group>
@@ -181,8 +159,8 @@ function App() {
               <>
                 <Roundabout />
                 <ShoeGameSongBox getStatus={getStatus} />
-                <Box key={`box-${getTotalCombo}`} getJudgeStatus={getJudgeStatus} getTotalCombo={getTotalCombo} />
-                <ShoeGameSongText getCommbo={getCommbo} getChose={getChose} />
+                <Box />
+                <ShoeGameSongText getChose={getChose} />
                 <ShowChoseSongScoresImg setStatus={setStatus} getChose={getChose} />
               </>
             )}

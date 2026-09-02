@@ -1,12 +1,14 @@
 ﻿import { PlayHitSound } from "./Js.js"
 import {  perfectRange , 
           goodRange , 
+          prefectTime,
+          lifeTime,
           everyLandAngle,
           arcLong,
           halfArcLong
 } from "./constants.js";
 
-import { useRotateJudge } from './hooks/hooks.jsx';
+import { useRotateJudge } from './hooks.jsx';
 
 import {  useVRStore , 
           useMouseStore , 
@@ -15,114 +17,128 @@ import {  useVRStore ,
           usePerfectStore,
           useGoodStore,
           useMissStore,
+          useComboStore,
+          useTotalComboStore,
+          useJudgeStatus
          } from './store.js';
 
-import { useEffect,useRef } from 'react';
+import { useEffect,useMemo,useRef } from 'react';
 
 import { useFrame } from '@react-three/fiber';
 
 
 
-
-export const LogicOfNotes = ({ onlyNotes , setCommbo , setTotalCombo , setJudgeStatus , getUseMouse }) => {
+export const LogicOfNotes = ({ onlyNotes , getUseMouse }) => {
   
   const meshRef = useRef([]);  // 改變3D物件的參考
   const notesRef = useRef([]);   // 儲存音符的狀態
+  const activeNoteIndicesRef = useRef([]);
+  const nextNoteIndexRef = useRef(0);
+  const orderedNotes = useMemo(
+    () => [...onlyNotes].sort((left, right) => left.triggerTime - right.triggerTime),
+    [onlyNotes],
+  );
 
-  // const angleVR = useVRStore((state) => state.angleR);          // 訂閱 zustand  的 angleR
-  // const mouseXR = useMouseStore((state) => state.mouseXR);      // 訂閱 zustand  的 mouseXR
-  // const angle = getUseMouse ? angleVR : mouseXR;
+  const setPerfect = usePerfectStore.getState().setPerfect;
+  const setGood = useGoodStore.getState().setGood;
+  const setMiss = useMissStore.getState().setMiss;
+  const setCombo = useComboStore.getState().setCombo;
+  const setTotalCombo = useTotalComboStore.getState().setTotalCombo;
+  const setJudgeStatus = useJudgeStatus.getState().setJudgeStatus;
+  
+
 
   // 只有歌曲／譜面改變時，才建立遊戲中的可變資料
   useEffect(() => {
-    notesRef.current = onlyNotes.map((note) => ({
+    notesRef.current = orderedNotes.map((note) => ({
       ...note,
     }));
 
-    // meshRef.current = [];   // 清空 meshRef.current
-    meshRef.current.length = onlyNotes.length; // 確保 meshRef.current 的長度與 onlyNotes 一致
-  }, [onlyNotes]);
+    meshRef.current.length = orderedNotes.length;
+    activeNoteIndicesRef.current = [];
+    nextNoteIndexRef.current = 0;
+  }, [orderedNotes]);
 
   useFrame(() => {
-    if (!meshRef.current) return;
+    if (!meshRef.current.length) return;
 
-    const musicTimeMs = useMusicTimeStore.getState().musicTimeMs; // 訂閱 zustand  的 musicTimeMs
+    const musicTimeMs = useMusicTimeStore.getState().musicTimeMs;
     const angleVR = useVRStore.getState().angleR;
-    const mouseXR = useMouseStore.getState().mouseXR; 
-    const perfect = usePerfectStore.getState().setPerfect;        // 訂閱 zustand  的 setPerfect
-    const good = useGoodStore.getState().setGood;                 // 訂閱 zustand  的 setGood
-    const miss = useMissStore.getState().setMiss;                 // 訂閱 zustand  的 setMiss
+    const mouseXR = useMouseStore.getState().mouseXR;
 
     const angle = getUseMouse ? angleVR : mouseXR;
+    const notes = notesRef.current;
+    const activeNoteIndices = activeNoteIndicesRef.current;
 
-    for (let i = 0; i < notesRef.current.length; i++) {
-     const noteState = notesRef.current[i];            // 取得當前音符的狀態
-     const mesh = meshRef.current[i];                  // 取得當前音符位置
+    // 只把已到出場時間的音符加入動畫清單。
+    while (
+      nextNoteIndexRef.current < notes.length &&
+      musicTimeMs >= notes[nextNoteIndexRef.current].triggerTime -
+        (notes[nextNoteIndexRef.current].startPosition - notes[nextNoteIndexRef.current].endPosition) /
+          notes[nextNoteIndexRef.current].noteSpeed *
+          (1000 / 60)
+    ) {
+      activeNoteIndices.push(nextNoteIndexRef.current);
+      nextNoteIndexRef.current += 1;
+    }
 
-      if (!mesh || noteState.isJudged) continue;        // 如果 mesh 不存在或音符已經判定完畢，不執行以下
+    for (let activeIndex = activeNoteIndices.length - 1; activeIndex >= 0; activeIndex -= 1) {
+      const noteIndex = activeNoteIndices[activeIndex];
+      const noteState = notes[noteIndex];
+      const mesh = meshRef.current[noteIndex];
 
+      if (!mesh || noteState.isJudged) {
+        activeNoteIndices.splice(activeIndex, 1);
+        continue;
+      }
 
-      // 計算時間與位置===========================================================================================================================
-      // 時間------------------------------------------------------------------------------------------------------------------------------------
-      const requiredMs = (notesRef.current[i].startPosition - notesRef.current[i].endPosition) / notesRef.current[i].noteSpeed * (1000 / 60);   // 從起始位置 ~ 結束位置，所需的毫秒數
-      const elapsedMs = musicTimeMs - (notesRef.current[i].triggerTime - requiredMs);                             // 從起始位置 ~ 結束位置，已經經過的毫秒數
+      const requiredMs = (noteState.startPosition - noteState.endPosition) /
+        noteState.noteSpeed * (1000 / 60);
+      const elapsedMs = musicTimeMs - (noteState.triggerTime - requiredMs);
+      const currentRadius = noteState.startPosition -
+        noteState.noteSpeed * (elapsedMs / (1000 / 60));
 
-      if (elapsedMs < 0) { mesh.visible = false; continue; } // 如果還沒到起始時間，隱藏音符 + 不執行以下
-
-      //位置-------------------------------------------------------------------------------------------------------------------------------------
-      const currentRadius = notesRef.current[i].startPosition - notesRef.current[i].noteSpeed * (elapsedMs / (1000 / 60));     // 每毫秒音符移動距離
-      const scale = currentRadius / notesRef.current[i].startPosition;
-      mesh.scale.set(scale, scale, 1);
+      mesh.scale.set(currentRadius / noteState.startPosition, currentRadius / noteState.startPosition, 1);
       mesh.visible = true;
 
-    
-      // 判定邏輯=================================================================================================================================
-      let judgeStyle = 0;  // 0: 未判定, 1: Perfect, 2: Good, 3: Miss
-
-      // Perfect / Good 
-      if (currentRadius <= notesRef.current[i].endPosition) {
-        const noteAngle = notesRef.current[i].noteLand * everyLandAngle;   
+      // 音符進入判定區前只更新動畫；進入後才執行一次角度判定。
+      if (currentRadius <= noteState.endPosition) {
+        const noteAngle = noteState.noteLand * everyLandAngle;
         const angleDiff = ((angle - noteAngle + Math.PI) % (Math.PI * 2)) - Math.PI;
         const angleDiffDegree = Math.abs(angleDiff) * (180 / Math.PI);
 
-        if (angleDiffDegree <= perfectRange) {
-          judgeStyle = 1;
-        } else if (angleDiffDegree <= goodRange) {
-          judgeStyle = 2;
+        const judgeStyle = angleDiffDegree <= perfectRange ? 1 :
+          angleDiffDegree <= goodRange ? 2 : 3;
+
+        noteState.judgeStyle = judgeStyle;
+        noteState.isJudged = true;
+        mesh.visible = false;
+        activeNoteIndices.splice(activeIndex, 1);
+
+        if (judgeStyle === 1) {
+          PlayHitSound?.();
+          setPerfect((value) => value + 1);
+          setCombo((value) => value + 1);
+          setTotalCombo((value) => value + 1);
+          setJudgeStatus("P");
+        } else if (judgeStyle === 2) {
+          PlayHitSound?.();
+          setGood((value) => value + 1);
+          setCombo((value) => value + 1);
+          setTotalCombo((value) => value + 1);
+          setJudgeStatus("G");
         } else {
-          judgeStyle = 3; 
+          setMiss((value) => value + 1);
+          setCombo(0);
+          setTotalCombo((value) => value + 1);
+          setJudgeStatus("M");
         }
-      }
-
-      if (judgeStyle === 0) continue;
-
-      noteState.judgeStyle = judgeStyle;   // 記錄判定結果
-      notesRef.current[i].isJudged = true;
-      mesh.visible = false;
-
-      if (judgeStyle === 1) {
-        PlayHitSound?.();
-        perfect((value) => value + 1);
-        setCommbo((value) => value + 1);
-        setTotalCombo((value) => value + 1);
-        setJudgeStatus("P");
-      } else if (judgeStyle === 2) {
-        PlayHitSound?.();
-        good((value) => value + 1);
-        setCommbo((value) => value + 1);
-        setTotalCombo((value) => value + 1);
-        setJudgeStatus("G");
-      } else {
-        miss((value) => value + 1);
-        setCommbo(0);
-        setTotalCombo((value) => value + 1);
-        setJudgeStatus("M");
       }
     }
   });
     return (
     <>
-      {onlyNotes.map((note, index) => (
+      {orderedNotes.map((note, index) => (
         <group  key={note.id ?? index} rotation={[0, 0, note.noteLand * everyLandAngle]} >
           <mesh ref={(mesh) => { meshRef.current[index] = mesh;}} visible={false}>
             <ringGeometry args={[note.startPosition - 0.05, note.startPosition,32,1,-halfArcLong,arcLong]}
@@ -135,7 +151,7 @@ export const LogicOfNotes = ({ onlyNotes , setCommbo , setTotalCombo , setJudgeS
   );
 };
 
-export const LogicOfDarg = ({ onlyDrag , setCommbo , setTotalCombo , setJudgeStatus , getUseMouse }) => {
+export const LogicOfDarg = ({ onlyDrag , getUseMouse }) => {
   // meshRefs[dragIndex][segmentIndex]
   const meshRefs = useRef([]);
   const dragRef = useRef([]);
@@ -163,16 +179,19 @@ export const LogicOfDarg = ({ onlyDrag , setCommbo , setTotalCombo , setJudgeSta
     // 否則會清掉 React 已掛載的 mesh refs。
   }, [onlyDrag]);
 
+  const perfect = usePerfectStore.getState().setPerfect;
+  const good = useGoodStore.getState().setGood;
+  const miss = useMissStore.getState().setMiss;
+  const setCombo = useComboStore.getState().setCombo;
+  const setTotalCombo = useTotalComboStore.getState().setTotalCombo;
+  const setJudgeStatus = useJudgeStatus.getState().setJudgeStatus;
+
   useFrame(() => {
     const musicTimeMs = useMusicTimeStore.getState().musicTimeMs;
     const angleVR = useVRStore.getState().angleR;
     const mouseXR = useMouseStore.getState().mouseXR;
     const playerAngle = getUseMouse ? angleVR : mouseXR;
 
-    const perfect = usePerfectStore.getState().setPerfect;
-    const good = useGoodStore.getState().setGood;
-    const miss = useMissStore.getState().setMiss;
-;
 
     for (let dragIndex = 0; dragIndex < dragRef.current.length; dragIndex++) {
       const drag = dragRef.current[dragIndex];
@@ -235,10 +254,7 @@ export const LogicOfDarg = ({ onlyDrag , setCommbo , setTotalCombo , setJudgeSta
           if (currentRadius <= drag.endPosition) {
             const segmentAngle = noteLand * everyLandAngle;
 
-            const angleDiff =
-              ((playerAngle - segmentAngle + Math.PI) %
-                (Math.PI * 2)) -
-              Math.PI;
+            const angleDiff = ((playerAngle - segmentAngle + Math.PI) % (Math.PI * 2) + (Math.PI * 2)) % (Math.PI * 2) -Math.PI;
 
             const angleDiffDegree =
               Math.abs(angleDiff) * (180 / Math.PI);
@@ -264,18 +280,18 @@ export const LogicOfDarg = ({ onlyDrag , setCommbo , setTotalCombo , setJudgeSta
         if (judgeStyle === 1) {
           PlayHitSound();
           perfect((value) => value + 1);
-          setCommbo((value) => value + 1);
+          setCombo((value) => value + 1);
           setTotalCombo((value) => value + 1);
           setJudgeStatus("P");
         } else if (judgeStyle === 2) {
           PlayHitSound();
           good((value) => value + 1);
-          setCommbo((value) => value + 1);
+          setCombo((value) => value + 1);
           setTotalCombo((value) => value + 1);
           setJudgeStatus("G");
         } else {
           miss((value) => value + 1);
-          setCommbo(0);
+          setCombo(0);
           setTotalCombo((value) => value + 1);
           setJudgeStatus("M");
         }
@@ -297,7 +313,7 @@ export const LogicOfDarg = ({ onlyDrag , setCommbo , setTotalCombo , setJudgeSta
 
         if (drag.direction === 1 && landDifference < 0) {
           landDifference += 32;
-        } else if (drag.direction === 0 && landDifference > 0) {
+        } else if (drag.direction === -1 && landDifference > 0) {
           landDifference -= 32;
         }
 
@@ -349,7 +365,7 @@ export const LogicOfDarg = ({ onlyDrag , setCommbo , setTotalCombo , setJudgeSta
   );
 };
 
-export const LogicOfRotate = ({ onlyRotate , setCommbo , setTotalCombo , setJudgeStatus , getUseMouse }) => {
+export const LogicOfRotate = ({ onlyRotate , getUseMouse }) => {
   
   useRotateJudge(getUseMouse); // 呼叫自訂的 hook 來判定旋轉方向
   const meshRef = useRef([]);  // 改變3D物件的參考
@@ -364,14 +380,18 @@ export const LogicOfRotate = ({ onlyRotate , setCommbo , setTotalCombo , setJudg
     meshRef.current.length = onlyRotate.length; // 確保 meshRef.current 的長度與 onlyRotate 一致
   }, [onlyRotate]);
 
-  useFrame(() => {
-    if (!meshRef.current) return;
-
-    const musicTimeMs = useMusicTimeStore.getState().musicTimeMs; // 訂閱 zustand  的 musicTimeMs 
-    const rotateJudgeAngle = useRotateJudgeResult.getState().rotateJudgeAngle; // 訂閱 zustand  的 rotateJudgeAngle
     const perfect = usePerfectStore.getState().setPerfect;        // 訂閱 zustand  的 setPerfect
     const good = useGoodStore.getState().setGood;                 // 訂閱 zustand  的 setGood
     const miss = useMissStore.getState().setMiss;                 // 訂閱 zustand  的 setMiss
+    const setCombo = useComboStore.getState().setCombo;
+    const setTotalCombo = useTotalComboStore.getState().setTotalCombo;
+    const setJudgeStatus = useJudgeStatus.getState().setJudgeStatus;
+
+  useFrame(() => {
+    if (!meshRef.current) return;
+
+    const musicTimeMs = useMusicTimeStore.getState().musicTimeMs;
+    const lastRotateEvent = useRotateJudgeResult.getState().lastRotateEvent;
 
     for (let i = 0; i < rotatesRef.current.length; i++) {
      const noteState = rotatesRef.current[i];            // 取得當前音符的狀態
@@ -397,17 +417,20 @@ export const LogicOfRotate = ({ onlyRotate , setCommbo , setTotalCombo , setJudg
 
       let judgeStyle = 0;
 
-      // 進入判定區才判斷角度
-      if (currentRadius <= noteState.endPosition) {
-        const directionMatched =
-          (rotateJudgeAngle === 1 && noteState.direction === 1) ||
-          (rotateJudgeAngle === 2 && noteState.direction === 0);
+        // 以抵達終點時間（triggerTime）為中心，在前後判定窗內接受旋轉。
+        // 使用最近一次有效旋轉事件，避免輸入在下一幀被重設為 0 而漏判。
+        if (musicTimeMs >= noteState.triggerTime - lifeTime) {
+          const expectedDirection = noteState.direction === 1 ? 1 : 2;
+          const timingDifference = lastRotateEvent
+            ? Math.abs(lastRotateEvent.musicTimeMs - noteState.triggerTime)
+            : Infinity;
+          const directionMatched =
+            lastRotateEvent?.direction === expectedDirection;
 
-        if (directionMatched) {
-          const timingDifference = Math.abs( musicTimeMs - noteState.triggerTime);
-            judgeStyle = timingDifference <= 25 ? 1 : 2;
-          }else {
-            judgeStyle = 3; // Miss
+          if (directionMatched && timingDifference <= lifeTime) {
+            judgeStyle = timingDifference <= prefectTime ? 1 : 2;
+          } else if (musicTimeMs > noteState.triggerTime + lifeTime) {
+            judgeStyle = 3; // 判定窗結束仍未收到正確方向的旋轉
           }
         }
         // 仍未判定，保留 mesh 到下一 frame
@@ -421,18 +444,18 @@ export const LogicOfRotate = ({ onlyRotate , setCommbo , setTotalCombo , setJudg
         if (judgeStyle === 1) {
           PlayHitSound();
           perfect((value) => value + 1);
-          setCommbo((value) => value + 1);
+          setCombo((value) => value + 1);
           setTotalCombo((value) => value + 1);
           setJudgeStatus("P");
         } else if (judgeStyle === 2) {
           PlayHitSound();
           good((value) => value + 1);
-          setCommbo((value) => value + 1);
+          setCombo((value) => value + 1);
           setTotalCombo((value) => value + 1);
           setJudgeStatus("G");
         } else {
           miss((value) => value + 1);
-          setCommbo(0);
+          setCombo(0);
           setTotalCombo((value) => value + 1);
           setJudgeStatus("M");
         }
