@@ -819,24 +819,22 @@ export const GameMusicPlay = ({ audioRef, audioSrc, getStop , setStatus, getStat
   );
 };
 
+// ref
 export const GameStar = ({ getGameStarPosition , getUseMouse , setStop , setStatus}) => {
 
-  const angleVR = useVRStore((state) => state.angleR);
-  const mouseXR = useMouseStore((state) => state.mouseXR);
-  const playerAngle = getUseMouse ? angleVR : mouseXR;
+
+  const [isInStarRange, setIsInStarRange] = useState(false);
+  const starRangeRef = useRef(false);
 
   const land = Number.isFinite(getGameStarPosition) ? getGameStarPosition : 0;
 
   const groupRef = useRef(null);
-
   const ringAngle = land * (Math.PI / 16) - Math.PI / 32; //取該軌道的中間值
   const radius = gameAreaRingRadiusIn + 0.1;      // 距離玩家多遠(圓半徑)
   const ringArcLength = Math.PI / 7;              // 裝飾圓弧長度
   const textAngle = ringAngle + ringArcLength / 2; // 文字角度
-  const diff = Math.atan2(Math.sin(playerAngle - ringAngle), Math.cos(playerAngle - ringAngle));
-  const starRange = diff >= 0 && diff <= ringArcLength;
-  const color = starRange ? 'rgb(255, 255, 255)' : 'rgb(114, 64, 64)';
-  const positionOffest = starRange ? 0 : 0.5;
+  const color = isInStarRange ? 'rgb(255, 255, 255)' : 'rgb(114, 64, 64)';
+  const positionOffest = isInStarRange ? 0 : 0.5;
 
 
   const [textX, textY] = [
@@ -848,7 +846,7 @@ export const GameStar = ({ getGameStarPosition , getUseMouse , setStop , setStat
   
 
   useEffect(() => {
-    if (!starRange) return;
+    if (!isInStarRange) return;
 
     const interval = setInterval(() => {
       setTime((prev) => { if (prev <= 1) { 
@@ -864,20 +862,30 @@ export const GameStar = ({ getGameStarPosition , getUseMouse , setStop , setStat
       clearInterval(interval);
       setTime(3);
     };
-  }, [starRange]); 
+  }, [isInStarRange]); 
 
 
-  useFrame((state, delta) => {
-    if (!groupRef.current) return;
+    useFrame((state, delta) => {
+      const angleVR = useVRStore.getState().angleR;
+      const mouseXR = useMouseStore.getState().mouseXR;
+      const playerAngle = getUseMouse ? angleVR : mouseXR;
 
-    // 計時變數
-    groupRef.current.userData.anima = (groupRef.current.userData.anima || 0) + delta * 1;
-    if (groupRef.current.userData.anima > 1) groupRef.current.userData.anima = 0;
+      const diff = Math.atan2(Math.sin(playerAngle - ringAngle),Math.cos(playerAngle - ringAngle),);
 
-    const progress = groupRef.current.userData.anima; // 0 ~ 1
+      const starRange = diff >= 0 && diff <= ringArcLength;
 
-    groupRef.current.position.z = progress * 0.2;
-  });
+
+      if (starRange !== starRangeRef.current) {
+        starRangeRef.current = starRange;
+        setIsInStarRange(starRange);
+      }
+
+      groupRef.current.userData.anima = (groupRef.current.userData.anima || 0) + delta;
+
+      if (groupRef.current.userData.anima > 1) { groupRef.current.userData.anima = 0; }
+
+      groupRef.current.position.z = groupRef.current.userData.anima * 0.2;
+    });
 
 
   return (
@@ -943,27 +951,31 @@ export const PlayerMark = ({ getUseMouse }) => {
   const arcLong = (Math.PI / 16) + 0.5
   const halfArcLong = arcLong/2
 
-  const angleVR = useVRStore((state) => state.angleR);   // 訂閱VR角度
-  const mouseXR = useMouseStore((state) => state.mouseXR);  //訂閱mouse角度
-  const angle = getUseMouse ? angleVR : mouseXR ; // 如果 getUseMouse 為 true，使用 VR 的角度，否則使用 0
+  const angleRef = useRef(null);  // 旋轉角度的參考
 
-  // const easingRef = useRef(null);
 
-  // useFrame(() => {
-  //   const easingAngle = easingRef.current.rotation.z;
+  useFrame(() => {
+    if (!angleRef.current) return;
 
-  //   let delta = angle - easingAngle;
+    const angleVR = useVRStore.getState().angleR;         // 訂閱VR角度
+    const mouseXR = useMouseStore.getState().mouseXR;     //訂閱mouse角度
+    const angle = getUseMouse ? angleVR : mouseXR;        // 如果 getUseMouse 為 true，使用 VR 的角度，否則使用 0
 
-  //   if (delta < -Math.PI) {
-  //     delta += 2 * Math.PI;
-  //   } else if (delta > Math.PI) {
-  //     delta -= 2 * Math.PI;
-  //   }
-  //   easingRef.current.rotation.z += delta * 0.2;
-  // });
+    const easingAngle = angleRef.current.rotation.z;
+
+    // easing計算
+    let delta = angle - easingAngle;
+    if (delta < -Math.PI) {
+      delta += 2 * Math.PI;
+    } else if (delta > Math.PI) {
+      delta -= 2 * Math.PI;
+    }
+    angleRef.current.rotation.z += delta * 0.2;
+  });
+  
   
   return (
-    <mesh rotation={[0, 0, angle]} position={[0, 0, 0]}>
+    <mesh ref={angleRef} position={[0, 0, 0]}>
       <ringGeometry args={[playerMarkIn, playerMarkOut, 32, 1, -halfArcLong, arcLong ]} />
       <meshStandardMaterial color={"rgb(255, 236, 22)"} />
     </mesh>
@@ -1010,34 +1022,43 @@ export const PuaseButtom = ({ getStop, setStop }) => {
   );
 };
 
-export const JudgeTextComponent = ({ getJudgeStatus , getTotalCombo}) => {
-  const judgeText = 
-    getJudgeStatus === 'P' ? 'PERFECT' : 
-    getJudgeStatus === 'G' ? 'GOOD' : 
-    getJudgeStatus === 'M' ? 'MISS' : null;
+export const JudgeTextComponent = ({
+  getJudgeStatus,
+  getTotalCombo,
+}) => {
+  const judgeText =
+    getJudgeStatus === "P" ? "PERFECT" :
+    getJudgeStatus === "G" ? "GOOD" :
+    getJudgeStatus === "M" ? "MISS" :
+    null;
 
-  const color = getJudgeStatus === 'M' ? 'red' : 'white';
+  const color = getJudgeStatus === "M" ? "red" : "white";
   const transparency = useFadeOut(getTotalCombo);
-  const radius = gameAreaRingRadiusIn
+  const radius = gameAreaRingRadiusIn;
+  const angleStep = 0.2;
 
   if (!judgeText) return null;
 
   const chars = judgeText.split("");
-  const angleStep = 0.2; 
 
   return (
     <group>
-      {chars.map((char, i) => {
-        const reversedIndex = chars.length - 1 - i;
-        const angle = (reversedIndex - (chars.length - 1) / 2) * angleStep;
+      {chars.map((char, index) => {
+        const reversedIndex = chars.length - 1 - index;
+        const angle =
+          (reversedIndex - (chars.length - 1) / 2) * angleStep;
+
         const x = Math.cos(angle) * radius;
         const y = Math.sin(angle) * radius;
 
         return (
-          <group key={`${char}-${i}`} position={[x, y, 1.2]} rotation={[0, 0, angle - Math.PI / 2]}>
+          <group
+            key={`${char}-${index}`}
+            position={[x, y, 1.2]}
+            rotation={[0, 0, angle - Math.PI / 2]}
+          >
             <Text
-              key={`${char}-${i}`}
-              rotation={[Math.PI/2, 0, 0]}
+              rotation={[Math.PI / 2, 0, 0]}
               fontSize={1}
               color={color}
               anchorX="center"
@@ -1087,11 +1108,11 @@ export const CommboTextComponent = ({ getCommbo , getTotalCombo}) => {
     </group>
   );
 };
-  
+
+// ref
 export const BackImg = ({ getChose }) => {
   const proxyImageUrl = useTexture(getChose?.img ? `${getChose.img}?url=${encodeURIComponent(getChose.img)}` : undefined);
   
-  // 旋轉
   const meshRef = useRef();
 
   useFrame((state, delta) => {
@@ -1260,8 +1281,6 @@ export const ShoeGameSongText = ({ getCommbo , getChose}) => {
     const perfect = usePerfectStore((state) => state.perfect);  // 訂閱 zustand  的 setPerfect
     const good = useGoodStore((state) => state.good);           // 訂閱 zustand  的 setGood
     const miss = useMissStore((state) => state.miss);           // 訂閱 zustand  的 setMiss 
-
-    console.log("perfect:", perfect, "good:", good, "miss:", miss);  // 在這裡打印值
 
      const hitPresent = Math.round(((perfect + good) / (perfect + good + miss)) * 100) ;
 

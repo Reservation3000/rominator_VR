@@ -1,6 +1,6 @@
 import { Canvas } from "@react-three/fiber";
 import { XR, createXRStore } from '@react-three/xr';
-import { useState , useEffect, useRef } from "react";
+import { useState , useRef , useMemo } from "react";
 import { OrbitControls , Environment } from '@react-three/drei'; 
 import "./App.css";
 
@@ -32,11 +32,7 @@ import {
 } from "./component.jsx";
 
 
-import { 
-  LogicOfNotes,
-  LogicOfRotate,
-  LogicOfDarg
-} from "./notesComponent"
+import { LogicOfNotes , LogicOfRotate , LogicOfDarg } from "./notesComponent"
 
 import { useMusicTimeStore } from "./store.js";
 
@@ -62,7 +58,6 @@ function App() {
   {/*fix*/}
   const [getUseMouse, setUseMouse] = useState(false); // 是否使用滑鼠控制旋轉
   const [getRotateCanva , setRotateCanva] = useState(false); //是否將畫布貼到地面
-  const menuAudioRef = useRef(null);
   const gameAudioRef = useRef(null);
 
 
@@ -72,7 +67,7 @@ function App() {
   const [getChose, setChose] = useState(null);    // 有沒有選中歌曲，選中哪首歌(ID)
   const [getPage, setPage] = useState(0);         // 現在是第幾頁
   const [getNoteCSVData, setNoteCSVData] = useState([]); //存入處理好的歌曲資料
-  const musicTimeMs = useMusicTimeStore((state) => state.musicTimeMs);
+  const musicTimeMs = useMusicTimeStore.getState().musicTimeMs;
   const [getStop, setStop] = useState(true);       // 遊戲暫停按鈕(false撥放)
   const [getGameStarPosition, setGameStarPosition] = useState(0); // 遊戲開始位置
 
@@ -80,15 +75,14 @@ function App() {
   const [getJudgeStatus, setJudgeStatus] = useState(null); //判定狀態
   const [getTotalCombo, setTotalCombo] = useState(0); //總共連擊數
 
-  const musicChoseRef = useRef(null); // 遊玩歌曲的audioRef
 
 
   const songTotal = getsongs.length;       // 有幾首歌
   const pageLimit = 8;                     // 單頁只能出現 8 首歌
   const pageTotal = Math.ceil(songTotal / pageLimit); // 共有幾頁
-  const onlyNotes = getNoteCSVData.filter((note) => note.type === 'note'); //只有note類型音符
-  const onlyRotate = getNoteCSVData.filter((note) => note.type === 'rotate');
-  const onlyDrag = getNoteCSVData.filter((note) => note.type === 'drag');
+  const onlyNotes = useMemo(() => getNoteCSVData.filter((note) => note.type === 'note'), [getNoteCSVData]);
+  const onlyRotate = useMemo(() => getNoteCSVData.filter((note) => note.type === 'rotate'), [getNoteCSVData]);
+  const onlyDrag = useMemo(() => getNoteCSVData.filter((note) => note.type === 'drag'), [getNoteCSVData]);
 
   const rotateCanvaX = getRotateCanva ? -Math.PI / 2 : 0;
   //===============================================================
@@ -99,11 +93,7 @@ function App() {
       <LoadData setSongs={setSongs} />
 
       <Canvas gl={{ toneMappingExposure: 1 }} 
-              camera={{ fov: 50,
-                        near: 0.1,
-                        far: 20,
-                        position: [0, 0, 3.6],
-                      }}>
+              camera={{ fov: 50, near: 0.1, far: 20, position: [0, 0, 0]}}>
 
         <XR store={xrStore}>
 
@@ -151,7 +141,7 @@ function App() {
             {(getStatus === 2) && (
               <group>
                   <BackImg radius={3.93} getChose={getChose} />
-                  <Box key={`box-${getTotalCombo}`} getJudgeStatus={getJudgeStatus} getTotalCombo={getTotalCombo} />
+                  <Box getJudgeStatus={getJudgeStatus} getTotalCombo={getTotalCombo} />
                   <GameStar getGameStarPosition={getGameStarPosition} getUseMouse={getUseMouse} setStop={setStop} setStatus={setStatus}/>
             </group>
             )}
@@ -179,7 +169,7 @@ function App() {
                                   getUseMouse={getUseMouse}
                   />
                   <PlayerMark getUseMouse={getUseMouse} />
-                  <Box key={`box-${getTotalCombo}`} getJudgeStatus={getJudgeStatus} getTotalCombo={getTotalCombo} />
+                  <Box  getJudgeStatus={getJudgeStatus} getTotalCombo={getTotalCombo} />
                   <JudgeTextComponent key={`judge-${getTotalCombo}`} getJudgeStatus={getJudgeStatus} getTotalCombo={getTotalCombo} />
                   <CommboTextComponent key={`combo-${getTotalCombo}`} getCommbo={getCommbo} getTotalCombo={getTotalCombo} />
                   <PuaseButtom getStop={getStop} setStop={setStop} />

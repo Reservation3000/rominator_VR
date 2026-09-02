@@ -27,13 +27,13 @@ export function useFadeOut(trigger) {
 export function useRotateJudge(getUseMouse ) {
   const setRotateJudgeResult = useRotateJudgeResult((state) => state.setRotateJudgeResult); // 取得設定旋轉判定結果的函數
 
-  const angleVR = useVRStore((state) => state.angleR);      // 訂閱 zustand  的 angleR
-  const mouseXR = useMouseStore((state) => state.mouseXR);  // 訂閱 zustand  的 mouseXR
-  const currentRadian = getUseMouse ? angleVR : mouseXR;
-
   const angleHistoryRef = useRef([]);
 
   useFrame(() => {
+    const angleVR = useVRStore.getState().angleR;      // 訂閱 zustand  的 angleR
+    const mouseXR = useMouseStore.getState().mouseXR;  // 訂閱 zustand  的 mouseXR
+    const currentRadian = getUseMouse ? angleVR : mouseXR;
+
     const currentAngle = currentRadian * (180 / Math.PI);
 
     const now = performance.now();

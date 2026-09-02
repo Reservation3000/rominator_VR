@@ -44,6 +44,9 @@ export const useGoodStore = create((set) => ({
 
 export const useMissStore = create((set) => ({
   miss: 0,
-  setMiss: (time) => set({ miss: time }),
+  setMiss: (time) => 
+    set((state) => ({
+      miss: typeof time === 'function' ? time(state.miss) : time,
+    })),
 }));
 
