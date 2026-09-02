@@ -131,11 +131,11 @@ export const LogicOfNotes = ({ musicTimeMs , onlyNotes , setCommbo , setTotalCom
 export const LogicOfDarg = ({ musicTimeMs, onlyDrag , setCommbo , setTotalCombo ,setJudgeStatus, getUseMouse}) => {
   
   const angleVR = useVRStore.getState().angleR;               // 訂閱 zustand  的 angleR
-  const mouseXR = useMouseStore.getState().mouseXR;           // 訂閱 zustand  的 mouseXR
+  const mouseXR = useMouseStore.getState().mouseXR;            // 訂閱 zustand  的 mouseXR
   const perfect = usePerfectStore.getState().setPerfect;      // 訂閱 zustand  的 setPerfect
   const good = useGoodStore.getState().setGood;               // 訂閱 zustand  的 setGood
   const miss = useMissStore.getState().setMiss;               // 訂閱 zustand  的 setMiss
-  
+
   const angle = getUseMouse ? angleVR : mouseXR;
   if (!onlyDrag) return null;
 

@@ -1,10 +1,11 @@
 import { Canvas } from "@react-three/fiber";
 import { XR, createXRStore } from '@react-three/xr';
-import { useState , useEffect} from "react";
+import { useState , useEffect, useRef } from "react";
 import { OrbitControls , Environment } from '@react-three/drei'; 
 import "./App.css";
 
 import {
+  LoadData,
   Box , 
   Roundabout,
   MenuComponent,
@@ -13,7 +14,8 @@ import {
   BackImg,
   MenuPageSwitchBottom,
   ProcessChoseCSVData,
-  GameMusicComponent,
+  GameMusicLogic,
+  GameMusicPlay,
   PlayerMark,
   PuaseButtom,
   JudgeTextComponent,
@@ -60,6 +62,8 @@ function App() {
   {/*fix*/}
   const [getUseMouse, setUseMouse] = useState(false); // 是否使用滑鼠控制旋轉
   const [getRotateCanva , setRotateCanva] = useState(false); //是否將畫布貼到地面
+  const menuAudioRef = useRef(null);
+  const gameAudioRef = useRef(null);
 
 
   const [getStatus, setStatus] = useState(0);     // 0歌曲選單、1選了歌曲、2遊玩、2.5暫停
@@ -68,13 +72,15 @@ function App() {
   const [getChose, setChose] = useState(null);    // 有沒有選中歌曲，選中哪首歌(ID)
   const [getPage, setPage] = useState(0);         // 現在是第幾頁
   const [getNoteCSVData, setNoteCSVData] = useState([]); //存入處理好的歌曲資料
-  const musicTimeMs = useMusicTimeStore.getState().musicTimeMs; // 訂閱 zustand  的 musicTimeMs
+  const musicTimeMs = useMusicTimeStore((state) => state.musicTimeMs);
   const [getStop, setStop] = useState(true);       // 遊戲暫停按鈕(false撥放)
   const [getGameStarPosition, setGameStarPosition] = useState(0); // 遊戲開始位置
 
   const [getCommbo, setCommbo] = useState(0);
   const [getJudgeStatus, setJudgeStatus] = useState(null); //判定狀態
   const [getTotalCombo, setTotalCombo] = useState(0); //總共連擊數
+
+  const musicChoseRef = useRef(null); // 遊玩歌曲的audioRef
 
 
   const songTotal = getsongs.length;       // 有幾首歌
@@ -83,40 +89,14 @@ function App() {
   const onlyNotes = getNoteCSVData.filter((note) => note.type === 'note'); //只有note類型音符
   const onlyRotate = getNoteCSVData.filter((note) => note.type === 'rotate');
   const onlyDrag = getNoteCSVData.filter((note) => note.type === 'drag');
-  
 
-  // 讀取歌曲資料(本地)
-  useEffect(() => {
-    const loadSongs = async () => {
-        try {
-          const localRes = await fetch('/VRsongData.json');
-          if (!localRes.ok) throw new Error(`HTTP ${localRes.status}`);
-          const localData = await localRes.json();
-          setSongs(Array.isArray(localData) ? localData : []);
-        } catch (localErr) {
-          console.error('localErr:', localErr);
-          setSongs([]);
-        }
-    };
-
-    loadSongs();
-  }, []);
-
-  
   const rotateCanvaX = getRotateCanva ? -Math.PI / 2 : 0;
   //===============================================================
   // return =======================================================
   //===============================================================
   return (
     <>
-      <MenuMusicComponent getTouch={getTouch} getChose={getChose} getStatus={getStatus} />
-      <GameMusicComponent
-        getChose={getChose}
-        setStatus={setStatus}
-        getStop={getStop}
-        setStop={setStop}
-        getStatus={getStatus}
-      />
+      <LoadData setSongs={setSongs} />
 
       <Canvas gl={{ toneMappingExposure: 1 }} 
               camera={{ fov: 50,
@@ -203,6 +183,7 @@ function App() {
                   <JudgeTextComponent key={`judge-${getTotalCombo}`} getJudgeStatus={getJudgeStatus} getTotalCombo={getTotalCombo} />
                   <CommboTextComponent key={`combo-${getTotalCombo}`} getCommbo={getCommbo} getTotalCombo={getTotalCombo} />
                   <PuaseButtom getStop={getStop} setStop={setStop} />
+                  <GameMusicLogic gameAudioRef={gameAudioRef} getChose={getChose} getStop={getStop} getStatus={getStatus} />
             </group>
           )}
 
@@ -220,6 +201,10 @@ function App() {
         </XR>
       </Canvas>
 
+      {/* 音樂撥放(HTML 元件) */}
+      <MenuMusicComponent getTouch={getTouch} getStatus={getStatus} />
+      <GameMusicPlay audioRef={gameAudioRef} audioSrc={getChose?.mp3} getStop={getStop} setStatus={setStatus} getStatus={getStatus} setStop={setStop} />
+
 
       { /* fix ===================================================================================================================================================*/}
       <div className="sideBarLayer">
@@ -229,6 +214,8 @@ function App() {
     </>
   );
 }
+
+
 
 
 

@@ -9,33 +9,6 @@ export const PlayHitSound = () => {
 
 
 //===============================================================================
-let mouseXR = 0;    
-
-window.addEventListener("mousemove", (event) => {
-  mouseXR = event.clientX;
-});
-
-export const MouseTrackerR = () => {
-  const rad = (mouseXR / window.innerWidth) * Math.PI * 2;
-  // console.log(mouseXR,rad);
-  return rad;
-};
-
-
-//===============================================================================
-let mouseXD = 0;    
-
-window.addEventListener("mousemove", (event) => {
-  mouseXD = event.clientX;
-});
-
-export const MouseTrackerD = () => {
-  const degrees = (mouseXD / window.innerWidth) * 360;
-  return degrees;
-};
-
-
-//===============================================================================
 export function isUseMouseEnabled(getUseMouse , mouseXR , angleR) {
   let angle;
 

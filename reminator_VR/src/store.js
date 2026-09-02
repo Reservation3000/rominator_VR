@@ -28,12 +28,18 @@ export const useMusicTimeStore = create((set) => ({
 // Zustand store for perfect, good, and miss counts===================================
 export const usePerfectStore = create((set) => ({
   perfect: 0,
-  setPerfect: (time) => set({ perfect: time }),
+  setPerfect: (value) =>
+    set((state) => ({
+      perfect: typeof value === 'function' ? value(state.perfect) : value,
+    })),
 }));
 
 export const useGoodStore = create((set) => ({
   good: 0,
-  setGood: (time) => set({ good: time }),
+  setGood: (value) =>
+    set((state) => ({
+      good: typeof value === 'function' ? value(state.good) : value,
+    })),
 }));
 
 export const useMissStore = create((set) => ({

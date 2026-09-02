@@ -23,6 +23,7 @@ import {
   seatRingRadiusOut,   
   playerMarkIn,
   playerMarkOut,
+  noteSpeed
 } from "./constants.js";
 
 import { useVRStore , 
@@ -34,6 +35,29 @@ import { useVRStore ,
 } from './store.js';
 
 
+//==========================================================================================
+// 讀取資料 ================================================================================
+//==========================================================================================
+  export const LoadData = ( {setSongs } ) => {
+  // 讀取歌曲資料(本地)
+  useEffect(() => {
+    const loadSongs = async () => {
+        try {
+          const localRes = await fetch('/VRsongData.json');
+          if (!localRes.ok) throw new Error(`HTTP ${localRes.status}`);
+          const localData = await localRes.json();
+          setSongs(Array.isArray(localData) ? localData : []);
+        } catch (localErr) {
+          console.error('localErr:', localErr);
+          setSongs([]);
+        }
+    };
+
+    loadSongs();
+  }, []);
+
+  return null; // 不需要渲染任何內容
+  }
 
 
 //==========================================================================================
@@ -160,7 +184,7 @@ function PopAnimation(trigger , enterX, enterY, enterz , targetXY , lambda ){
     if (!value.current) return;
     value.current.scale.x = THREE.MathUtils.damp(value.current.scale.x, targetXY, lambda, delta);
     value.current.scale.y = THREE.MathUtils.damp(value.current.scale.y, targetXY, lambda, delta);
-    value.current.position.z = THREE.MathUtils.damp(value.current.position.z, 0, 10, delta);
+    value.current.position.z = THREE.MathUtils.damp(value.current.position.z, 0, lambda, delta);
   });
 
   return value;
@@ -410,7 +434,7 @@ export const MenuPageSwitchBottom = ({ setPage , getPage , pageTotal }) => {
   const colorR = isTouchR ? 'white' : 'rgb(150,150,150)' ;
 
   return (
-    <group position={[0, 0, -1]}>
+    <group position={[0, 0, 0]}>
       <Text
         position={[-1.2, 0, 0]}
         fontSize={0.55}
@@ -442,6 +466,7 @@ export const MenuPageSwitchBottom = ({ setPage , getPage , pageTotal }) => {
 
 // 音樂撥放機制
 export const MenuMusicComponent = ({ getTouch , getStatus}) => {
+  
     const musicTouched = useRef(null);
     const localSrc = getTouch?.mp3 || null;
 
@@ -544,7 +569,7 @@ export const ProcessChoseCSVData = ({ getChose , setNoteCSVData , setGameStarPos
           return {
             ...item,
             density: density,
-            noteSpeed: 0.05,
+            noteSpeed: noteSpeed,
             startPosition: startPosition,
             endPosition: endPosition,
             lifePosition: endPosition - 0.2,
@@ -558,7 +583,7 @@ export const ProcessChoseCSVData = ({ getChose , setNoteCSVData , setGameStarPos
         } else {
           return {
             ...item,
-            noteSpeed: 0.05,
+            noteSpeed: noteSpeed,
             startPosition: startPosition,
             endPosition: endPosition,
             lifePosition: endPosition - 0.1,
@@ -738,53 +763,61 @@ export const Box = ({ position, getJudgeStatus , getTotalCombo}) => {
   );
 };
 
-export const GameMusicComponent = ({ getChose, setStatus , getStop , setStop , getStatus }) => {
-  const musicChose = useRef(null);
+export const GameMusicLogic = ({ gameAudioRef , getChose, getStop, getStatus }) => {
+  const audioRef = gameAudioRef;
+  const audioSrc = getChose?.mp3;
 
+  const setMusicTimeMs = useMusicTimeStore.getState().setMusicTimeMs;
+
+  // 更新音樂時間=======================================
+  useFrame(() => {
+    if (audioRef.current && !getStop) {
+      setMusicTimeMs(Math.floor(audioRef.current.currentTime * 1000));
+    }
+  });
+
+  // 如果狀態不是 3 或 3.5，暫停並重置音樂===============
   useEffect(() => {
-    if (!musicChose.current || !getChose?.mp3 ) return;
-    if (getStatus == 2 || getStatus == 2.5) return;
+    if (!audioRef.current) return;
 
-    musicChose.current.pause();
-    musicChose.current.currentTime = 0;
-  }, [getChose?.mp3, getStatus]);
+    if (getStatus !== 3 && getStatus !== 3.5) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+  }, [getStatus]);
 
+  // 處理音樂的 播放/暫停 ==========================
   useEffect(() => {
-    if (!musicChose.current || !getChose?.mp3) return;
+    if (!audioRef.current) return;
 
     if (getStop) {
-      musicChose.current.pause();
+      audioRef.current.pause();
     } else {
-      musicChose.current.play().catch(() => {
-        console.warn('Audio autoplay blocked; user interaction is required to start playback.');
-      });
+      audioRef.current.play().catch(() => {});
     }
-  }, [getChose?.mp3, getStop, getStatus]);
+  }, [getStop, audioSrc]);
 
-  if (!getChose?.mp3) return null;
+  return null; // 只處理音樂邏輯
+};
 
-  const localSrc = getChose?.mp3 || undefined;
+export const GameMusicPlay = ({ audioRef, audioSrc, getStop , setStatus, getStatus , setStop }) => {
+  const resolvedAudioSrc = typeof audioSrc === 'string' ? audioSrc : audioSrc?.mp3;
+
+  if (!resolvedAudioSrc || (getStatus !== 3 && getStatus !== 3.5)) return null;
 
   return (
-    <>
-      <MusicTimeTracker audioRef={musicChose} />
-      <audio 
-        style={{ top: '50px', position: 'relative' }}
-        ref={musicChose}
-        src={localSrc}
-        autoPlay
-        onCanPlay={() => {
-          if (!getStop) {
-            musicChose.current?.play().catch(() => {});
-          }
-        }}
-        onPlay={() => setStop(false)}
-        onPause={() => setStop(true)}
-        onEnded={() => setStatus(4)}
-      />
-    </>
+    <audio
+      key={resolvedAudioSrc}
+      ref={audioRef}
+      src={resolvedAudioSrc}
+      autoPlay={!getStop}
+      onPlay={() => setStop(false)}
+      onPause={() => setStop(true)}
+      onEnded={() => setStatus(4)}
+      style={{ display: 'none' }}
+    />
   );
-}
+};
 
 export const GameStar = ({ getGameStarPosition , getUseMouse , setStop , setStatus}) => {
 
@@ -1228,6 +1261,8 @@ export const ShoeGameSongText = ({ getCommbo , getChose}) => {
     const good = useGoodStore((state) => state.good);           // 訂閱 zustand  的 setGood
     const miss = useMissStore((state) => state.miss);           // 訂閱 zustand  的 setMiss 
 
+    console.log("perfect:", perfect, "good:", good, "miss:", miss);  // 在這裡打印值
+
      const hitPresent = Math.round(((perfect + good) / (perfect + good + miss)) * 100) ;
 
   return (
@@ -1295,32 +1330,6 @@ export const MouseRXTracker = () => {
 
   return null;
 };
-
-// 音樂時間tracker =====================================================================================
-export const MusicTimeTracker = ({ audioRef }) => {
-  const setMusicTimeMs = useMusicTimeStore.getState().setMusicTimeMs;
-
-  useEffect(() => {
-    if (!audioRef?.current) return;
-
-    let rafId;
-
-    const tick = () => {
-      const audio = audioRef.current;
-      if (audio && !audio.paused) {
-        setMusicTimeMs(Math.floor(audio.currentTime * 1000));
-      }
-      rafId = requestAnimationFrame(tick);
-    };
-
-    rafId = requestAnimationFrame(tick);
-
-    return () => cancelAnimationFrame(rafId);
-  }, [audioRef, setMusicTimeMs]);
-
-  return null;
-};
-
 
 //==========================================================================================
 //fix component=============================================================================
