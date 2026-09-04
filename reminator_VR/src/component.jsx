@@ -128,7 +128,7 @@ export const ShowGameSongText = ({ shouldRotate, whichGet, offset , r, step, off
 };
 
 // 站著的文字，圍繞圓心
-export const ShowGameSongTextStand = ({ shouldRotate, whichGet, offset , r, step , offset2 , textSize}) => {
+export const ShowGameSongTextStand = ({ shouldRotate, whichGet, offset , r, step , offset2 , textSize , color , fillOpacity}) => {
 
   const groupRef = useRef(null);
 
@@ -158,11 +158,11 @@ export const ShowGameSongTextStand = ({ shouldRotate, whichGet, offset , r, step
             <Text
               rotation={[Math.PI/2, 0, 0]}
               fontSize={textSize}
-              color="white"
+              color={color}
               anchorX="center"
               anchorY="middle"
               transparent
-              fillOpacity={0.2}
+              fillOpacity={fillOpacity}
             >
               {char}
             </Text>
@@ -360,28 +360,19 @@ export const MenuComponent = ({ getsongs, setTouch, setChose, getTouch, setStatu
 
   const scale = PopAnimation(getStatus , 0.8, 0.8, 1, 1, 30);
 
-  const pageLimit = 8;
-  const pageStartIndex = getPage * pageLimit;
-  const pageEndIndex = pageStartIndex + pageLimit;
-  const pageNow = useMemo(() => 
+  const pageLimit = 8;                              // 每頁有8個選項
+  const pageStartIndex = getPage * pageLimit;       // 這頁的第一個歌曲index(8 => 16 -> 32...)
+  const pageEndIndex = pageStartIndex + pageLimit;  // 這頁的結束index(8 => 16 =>32...)(不算在該頁的歌曲數裡)
+  const pageNow = useMemo(() =>                     // 選出該頁的8筆資料
     getsongs.slice(pageStartIndex, pageEndIndex),
     [getsongs, pageStartIndex, pageEndIndex],
   );
 
-  const VRangle = useVRStore((state) => state.angleR);
-  const mouseXD = useMouseStore((state) => state.mouseXR) * (360 / window.innerWidth); // 將 mouseXR 轉換為角度
-  const [mouseAngle, setMouseAngle] = useState(mouseXD);
+  const VRangle = useVRStore((state) => state.angleR) * (180/Math.PI);     // 將 VRangle 轉為角度
+  const mouseXD = useMouseStore((state) => state.mouseXR) * (180/Math.PI); // 將 mouseXR 轉換為角度
 
-  useEffect(() => {
-    const handleMouseMove = (event) => {
-      setMouseAngle((event.clientX / window.innerWidth) * 360);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
-
-  const vrMenuAngle = ((VRangle * (180 / Math.PI)) + 360) % 360;
+  const vrMenuAngle = (VRangle + 360) % 360;
+  const mouseAngle = (mouseXD + 360) % 360;
   const whichAngleUse = getUseMouse ? vrMenuAngle : mouseAngle;
 
 
@@ -714,8 +705,8 @@ export const ShowChoseSongData = ({ getChose }) => {
     <group>
 
       <group ref={angle} position={[0, 0, 0]}>
-        <ShowGameSongTextStand shouldRotate={false} whichGet={song_name} offset={0} r={3.8} step={0.22} offset2={0} textSize={1.3}/>
-         <ShowGameSongTextStand shouldRotate={false} whichGet={song_name} offset={0} r={3.8} step={0.22} offset2={Math.PI} textSize={1.3}/>
+        <ShowGameSongTextStand shouldRotate={false} whichGet={song_name} offset={0} r={3.8} step={0.22} offset2={0} textSize={1.3} color={"white"} fillOpacity={0.2}/>
+         <ShowGameSongTextStand shouldRotate={false} whichGet={song_name} offset={0} r={3.8} step={0.22} offset2={Math.PI} textSize={1.3} color={"white"} fillOpacity={0.2}/>
       </group>
 
       <group position={[0, 0, 0]}>
@@ -753,6 +744,135 @@ function ResetSongJudgeData(){
   setTotalCombo(0);
   setJudgeStatus(null);
 };
+
+// =========================================================================================
+// 暫停畫面 2.5 ============================================================================
+// ========================================================================================
+export const ShowStop = ({ setStatus, setStop, getUseMouse, getStop , getStatus}) => {
+
+  // 倒數時，縮放的參考
+  const groupRef = useRef();
+
+  // Time
+  const replayStartTime = useRef(null);
+  const getTimeRef = useRef(3);
+  const [getTime, setGetTime] = useState(3);
+  const [showReplayText, setShowReplayText] = useState(false);
+
+  // 是否開始執行倒數動畫
+  const isAnimating = useRef(false);
+  const textAngle = useRef();
+
+  // Mesh
+  const replayMeshRef = useRef();
+  const exitMeshRef = useRef();
+
+  // 點擊後，replayStartTime.current=現在時間
+  const handleReplayClick = () => { 
+    if(isAnimating.current) return;
+    replayStartTime.current = Date.now(); 
+    getTimeRef.current = 3;
+    setGetTime(3);
+    setShowReplayText(true);
+    isAnimating.current = true;
+    if (groupRef.current) groupRef.current.visible = true;
+    groupRef.current?.scale.set(1, 1, 1);
+  };
+
+
+  useFrame(() => {
+    // 處理 Replay 點擊後的縮放動畫與 3 秒倒數
+    if ( isAnimating.current && groupRef.current) {
+      const elapsedTime = (Date.now() - replayStartTime.current); // 經過的毫秒數
+      const remainingTime = Math.max(1, Math.ceil(3 - elapsedTime / 1000));
+      if (remainingTime !== getTimeRef.current) {
+        getTimeRef.current = remainingTime;
+        setGetTime(remainingTime);
+      }
+
+      if (elapsedTime < 3000) {
+        const progress = Math.max(0, 1 - elapsedTime / 200);
+        groupRef.current.scale.set(progress, progress, progress);
+      } else {
+        groupRef.current.visible = false;
+        setStop(false);                      // 解除暫停
+        setShowReplayText(false);            // 關閉顯示倒數文字
+        isAnimating.current = false;         // 關閉動畫
+      }
+    }
+
+    //滑鼠觸碰觸發的動畫
+    const angleVR = useVRStore.getState().angleR;
+    const mouseXR = useMouseStore.getState().mouseXR;
+    const angle = getUseMouse ? angleVR : mouseXR;
+
+     if (textAngle.current) {
+      textAngle.current.rotation.z = angle;
+    }
+    
+    const TWO_PI = Math.PI * 2;
+    const normalAngle = ((angle % TWO_PI) + TWO_PI) % TWO_PI;
+
+    const isInReplayRange = normalAngle >= 0 && normalAngle <= Math.PI;
+    const isInExitRange = normalAngle > Math.PI && normalAngle <= TWO_PI;
+
+    if (replayMeshRef.current) {
+      replayMeshRef.current.position.z = isInReplayRange ? 0.3 : 0;
+      replayMeshRef.current.material.color.set(
+        isInReplayRange ? "rgb(216, 108, 66)" : "rgb(100, 100, 100)"
+      );
+    }
+    if (exitMeshRef.current) {
+      exitMeshRef.current.position.z = isInExitRange ? 0.3 : 0;
+      exitMeshRef.current.material.color.set(
+        isInExitRange ? "rgb(30, 130, 202)" : "rgb(100, 100, 100)"
+      );
+    }
+  })
+
+
+  return (
+    <group>
+      <group ref={groupRef} position={[0, 0, 0.2]}>
+        {/*replay*/}
+        <mesh ref={replayMeshRef} onPointerDown={handleReplayClick}>
+          <ringGeometry args={[gameAreaRingRadiusIn-3, gameAreaRingRadiusIn-1 , 32, 1, 0, Math.PI]} /> 
+          <meshStandardMaterial />
+        </mesh>
+        <mesh position={[0, 0, -0.5]}>
+          <ShowGameSongTextStand shouldRotate={false} whichGet={"Menu"} offset={0} r={gameAreaRingRadiusIn -2.5}  step={0.3} offset2={-Math.PI/2} textSize={1} color={"white"} fillOpacity={1} />
+        </mesh>
+
+        {/*exit*/}
+        <mesh ref={exitMeshRef} onPointerDown={() => setStatus(0)}>
+          <ringGeometry args={[gameAreaRingRadiusIn-3, gameAreaRingRadiusIn-1 , 32, 1, Math.PI, Math.PI]} /> 
+          <meshStandardMaterial />
+        </mesh>
+        <mesh position={[0, 0, -0.5]}>
+          <ShowGameSongTextStand shouldRotate={false} whichGet={"Replay"} offset={0} r={gameAreaRingRadiusIn -2.5}  step={0.3} offset2={Math.PI/2} textSize={1} color={"white"} fillOpacity={1} />
+        </mesh>
+
+        {/*裝飾*/}
+        <mesh position={[0, 0, 0.5]}>
+           {/* args: [圓環半徑, 管身厚度, 徑向分段, 圓周分段, 弧長角度] */}
+          <Torus args={[1.5, 0.02, 16, 64, 5.2]} />
+          <ringGeometry args={[4.17, 4.2 , 64, 1]} /> 
+          <meshStandardMaterial color={"white"} />
+        </mesh>
+      </group>
+
+      {showReplayText && (
+        <group ref={textAngle} position={[0,0,0.1]}>
+          <ShowGameSongTextStand shouldRotate={false} whichGet={getTime} offset={0} r={gameAreaRingRadiusIn + 0.1}  step={0} offset2={0} textSize={1} color={"white"} fillOpacity={0.6} />
+          <group position={[0,0,-0.6]}>
+            <ShowGameSongTextStand shouldRotate={false} whichGet={"ready..."} offset={0} r={gameAreaRingRadiusIn + 0.1}  step={0.05} offset2={0} textSize={0.4} color={"white"} fillOpacity={0.6} />
+           </group>
+        </group>
+      )}
+    </group>
+  );
+};
+
 
 //==========================================================================================
 //遊玩 2 => 3===============================================================================
@@ -1044,7 +1164,7 @@ export const PuaseButtom = ({ getStop, setStop }) => {
         anchorY="middle"
         fillOpacity={0.8}
       >
-        {getStop ? '▶' : '⏸'}
+        {getStop ? ' ' : '⏸'}
       </Text>
     </group>
   );
@@ -1342,8 +1462,8 @@ export const ShoeGameSongText = ({ getChose }) => {
       <ShowGameSongText shouldRotate={false} whichGet={'MAXCOMMBO'} offset={3.7} r={3.2} step={0.1} offset2={0} textSize={0.42} color={"white"} isCenter={true}/>
       <ShowGameSongText shouldRotate={false} whichGet={'HIT%'} offset={2.6} r={3.2} step={0.1} offset2={0} textSize={0.42} color={"white"} isCenter={true}/>
       
-      <ShowGameSongTextStand shouldRotate={true} whichGet={getChose.name} offset={0} r={gameAreaRingRadiusOut-0.2} step={0.2} offset2={0} textSize={2}/>
-      <ShowGameSongTextStand shouldRotate={true} whichGet={getChose.name} offset={0} r={gameAreaRingRadiusOut-0.2} step={0.2} offset2={Math.PI} textSize={2}/>
+      <ShowGameSongTextStand shouldRotate={true} whichGet={getChose.name} offset={0} r={gameAreaRingRadiusOut-0.2} step={0.2} offset2={0} textSize={2} color={"white"} fillOpacity={0.2}/>
+      <ShowGameSongTextStand shouldRotate={true} whichGet={getChose.name} offset={0} r={gameAreaRingRadiusOut-0.2} step={0.2} offset2={Math.PI} textSize={2} color={"white"} fillOpacity={0.2}/>
     </group>
   );
 }

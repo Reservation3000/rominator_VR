@@ -417,17 +417,18 @@ export const LogicOfRotate = ({ onlyRotate , getUseMouse }) => {
 
       let judgeStyle = 0;
 
-        // 以抵達終點時間（triggerTime）為中心，在前後判定窗內接受旋轉。
+        // 只接受抵達終點（triggerTime）之後的旋轉：前 15 ms 是 Perfect，
+        // 剩餘生命時間是 Good。
         // 使用最近一次有效旋轉事件，避免輸入在下一幀被重設為 0 而漏判。
-        if (musicTimeMs >= noteState.triggerTime - lifeTime) {
+        if (musicTimeMs >= noteState.triggerTime ) {
           const expectedDirection = noteState.direction === 1 ? 1 : 2;
           const timingDifference = lastRotateEvent
-            ? Math.abs(lastRotateEvent.musicTimeMs - noteState.triggerTime)
+            ? lastRotateEvent.musicTimeMs - noteState.triggerTime
             : Infinity;
           const directionMatched =
             lastRotateEvent?.direction === expectedDirection;
 
-          if (directionMatched && timingDifference <= lifeTime) {
+          if (directionMatched && timingDifference >= 0 && timingDifference <= lifeTime) {
             judgeStyle = timingDifference <= prefectTime ? 1 : 2;
           } else if (musicTimeMs > noteState.triggerTime + lifeTime) {
             judgeStyle = 3; // 判定窗結束仍未收到正確方向的旋轉

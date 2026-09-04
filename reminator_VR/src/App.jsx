@@ -20,6 +20,7 @@ import {
   GameMusicPlay,
   PlayerMark,
   PuaseButtom,
+  ShowStop,
   JudgeTextComponent,
   CommboTextComponent,
   ShowChoseSongData,
@@ -136,6 +137,10 @@ function App() {
                   <Box/>
                   <GameStar getGameStarPosition={getGameStarPosition} getUseMouse={getUseMouse} setStop={setStop} setStatus={setStatus}/>
             </group>
+            )}
+
+            {(getStop == true && getStatus === 3) && (
+              <ShowStop setStatus={setStatus} setStop={setStop} getUseMouse={getUseMouse} getStop={getStop} getStatus={getStatus}/>
             )}
 
             {(getStatus === 3) && (
