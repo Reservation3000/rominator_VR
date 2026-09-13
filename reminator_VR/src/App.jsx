@@ -92,7 +92,7 @@ function App() {
 
         <XR store={xrStore}>
 
-          <OrbitControls />
+          <OrbitControls enableDamping={true} dampingFactor={0.1} />
           <StatusControl setStatus={setStatus} />
           <VRTracker  />
           <MouseRXTracker  />
