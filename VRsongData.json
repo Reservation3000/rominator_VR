@@ -105,5 +105,17 @@
          "mp3": "https://mg.reservationfurry.art/熱血的決鬥者/base.mp3",
         "csv": "https://mg.reservationfurry.art/熱血的決鬥者/base.csv",
         "img": "https://mg.reservationfurry.art/熱血的決鬥者/base.jpg"
+    },
+
+    {
+        "id": 10,
+        "name": "発見者はワタシ",
+        "song_artist": "たぴみる",
+        "sheet_artist": "Reservation",
+        "level": 11,
+        "bpm": 175,
+        "mp3": "https://mg.reservationfurry.art/発見者はワタシ/base.mp3",
+        "csv": "https://mg.reservationfurry.art/発見者はワタシ/base.csv",
+        "img": "https://mg.reservationfurry.art/発見者はワタシ/base.jpg"
     }
 ]
