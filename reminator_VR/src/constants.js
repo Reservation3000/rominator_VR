@@ -1,5 +1,5 @@
 export const serverURL = "http://localhost:8081/api/VRmgDB/data";
-export const audioProxyURL = "https://mg.reservationfurry.art/assest/hit.mp3";
+// export const audioProxyURL = "https://mg.reservationfurry.art/assest/hit.mp3";
 export const HDRIProxyURL = "https://mg.reservationfurry.art/assest/baseHDR.exr";
 
 //歌曲選單配置==============================================================================================

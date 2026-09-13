@@ -10,30 +10,28 @@ import {
 // 自訂顏色透明度減弱動畫的function ==================================================
 export function useFadeOut(trigger , starValue , triggerValue) {
   const [transparency, setTransparency] = useState(1);
+  const elapsedRef = useRef(0);
+  const triggerRef = useRef(trigger);
 
   useEffect(() => {
-    const fadeDurationMs = 300;
-    let frameId;
+    if (triggerRef.current === trigger) return;
 
-    // 延到下一個動畫影格重設，可在不於 effect 中同步 setState 的情況下，
-    // 確保每次 trigger 改變都從完全不透明開始。
-    frameId = requestAnimationFrame((startTime) => {
-      setTransparency(1);
-
-      const fade = (now) => {
-        const nextTransparency = Math.max(starValue, triggerValue - (now - startTime) / fadeDurationMs);
-        setTransparency(nextTransparency);
-
-        if (nextTransparency > 0) {
-          frameId = requestAnimationFrame(fade);
-        }
-      };
-
-      frameId = requestAnimationFrame(fade);
-    });
-
-    return () => cancelAnimationFrame(frameId);
+    triggerRef.current = trigger;
+    elapsedRef.current = 0;
+    setTransparency(triggerValue);
   }, [trigger]);
+
+  useFrame((state, delta) => {
+    const fadeDurationMs = 300;
+    if (elapsedRef.current >= fadeDurationMs) return;
+
+    elapsedRef.current = Math.min(elapsedRef.current + delta * 1000, fadeDurationMs);
+    const nextTransparency = Math.max(
+      starValue,
+      triggerValue - elapsedRef.current / fadeDurationMs,
+    );
+    setTransparency(nextTransparency);
+  });
 
   return transparency;
 }

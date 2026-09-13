@@ -67,7 +67,6 @@ function App() {
   const [getChose, setChose] = useState(null);    // 有沒有選中歌曲，選中哪首歌(ID)
   const [getPage, setPage] = useState(0);         // 現在是第幾頁
   const [getNoteCSVData, setNoteCSVData] = useState([]); //存入處理好的歌曲資料
-  const musicTimeMs = useMusicTimeStore.getState().musicTimeMs;
   const [getStop, setStop] = useState(true);       // 遊戲暫停按鈕(false撥放)
   const [getGameStarPosition, setGameStarPosition] = useState(0); // 遊戲開始位置
 
@@ -89,7 +88,7 @@ function App() {
       <LoadData setSongs={setSongs} />
 
       <Canvas gl={{ toneMappingExposure: 1 }} 
-              camera={{ fov: 50, near: 0.1, far: 20, position: [0, 0, 10]}}>
+              camera={{ fov: 50, near: 0.1, far: 20, position: [0, 0, 20]}}>
 
         <XR store={xrStore}>
 
@@ -132,7 +131,7 @@ function App() {
 
 
             {(getStatus === 2) && (
-              <group>
+              <group key="game-start-scene">
                   <BackImg radius={3.93} getChose={getChose} />
                   <Box/>
                   <GameStar getGameStarPosition={getGameStarPosition} getUseMouse={getUseMouse} setStop={setStop} setStatus={setStatus}/>
@@ -140,17 +139,17 @@ function App() {
             )}
 
             {(getStop == true && getStatus === 3) && (
-              <ShowStop setStatus={setStatus} setStop={setStop} getUseMouse={getUseMouse} getStop={getStop} getStatus={getStatus}/>
+              <ShowStop setStatus={setStatus} setStop={setStop} getUseMouse={getUseMouse} getChose={getChose} getStatus={getStatus}/>
             )}
 
             {(getStatus === 3) && (
-              <group>
+              <group key="gameplay-scene">
                   <ambientLight intensity={2} />
                   <BackImg radius={3.93} getChose={getChose} />
                   
-                  <Notes.LogicOfNotes musicTimeMs={musicTimeMs} onlyNotes={onlyNotes} getUseMouse={getUseMouse}  />
-                  <Notes.LogicOfDarg  musicTimeMs={musicTimeMs} onlyDrag={onlyDrag} getUseMouse={getUseMouse} />
-                  <Notes.LogicOfRotate  musicTimeMs={musicTimeMs} onlyRotate={onlyRotate} getUseMouse={getUseMouse} />
+                  <Notes.LogicOfNotes  onlyNotes={onlyNotes} getUseMouse={getUseMouse}  />
+                  <Notes.LogicOfDarg  onlyDrag={onlyDrag} getUseMouse={getUseMouse} />
+                  <Notes.LogicOfRotate   onlyRotate={onlyRotate} getUseMouse={getUseMouse} />
 
                   <Box  />
                   <JudgeTextComponent />
@@ -161,13 +160,13 @@ function App() {
           )}
 
             {(getStatus === 4) && (
-              <>
+              <group key="result-scene">
                 <Roundabout />
                 <ShoeGameSongBox getStatus={getStatus} />
                 <Box />
                 <ShoeGameSongText getChose={getChose} />
                 <ShowChoseSongScoresImg setStatus={setStatus} getChose={getChose} />
-              </>
+              </group>
             )}
           </group> 
           

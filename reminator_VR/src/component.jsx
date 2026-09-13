@@ -38,6 +38,7 @@ import { useVRStore ,
 } from './store.js';
 
 
+
 //==========================================================================================
 // 讀取資料 ================================================================================
 //==========================================================================================
@@ -748,7 +749,10 @@ function ResetSongJudgeData(){
 // =========================================================================================
 // 暫停畫面 2.5 ============================================================================
 // ========================================================================================
-export const ShowStop = ({ setStatus, setStop, getUseMouse, getStop , getStatus}) => {
+export const ShowStop = ({ setStatus, setStop, getUseMouse, getChose , getStatus}) => {
+
+  // img Url
+   const proxyImageUrl = useTexture(getChose?.img ? `${getChose.img}?url=${encodeURIComponent(getChose.img)}` : undefined);
 
   // 倒數時，縮放的參考
   const groupRef = useRef();
@@ -766,21 +770,45 @@ export const ShowStop = ({ setStatus, setStop, getUseMouse, getStop , getStatus}
   // Mesh
   const replayMeshRef = useRef();
   const exitMeshRef = useRef();
+  // img rotate
+  const imgRotate = useRef();
+  //ring rotate
+  const ringRotate = useRef();
+
+  //color
+  const [isTouchReplay , setIsTouchReplay] = useState();
+  const colorReplay = isTouchReplay ? "rgb(247, 152, 172)" : "rgb(112, 112, 112)"
+  const [isTouchMenu , setIsTouchMenu] = useState();
+  const colorMenu = isTouchMenu ? "rgb(247, 152, 172)" : "rgb(112, 112, 112)"
+
 
   // 點擊後，replayStartTime.current=現在時間
   const handleReplayClick = () => { 
+    // 倒數動畫
     if(isAnimating.current) return;
+
     replayStartTime.current = Date.now(); 
     getTimeRef.current = 3;
     setGetTime(3);
     setShowReplayText(true);
     isAnimating.current = true;
+    
     if (groupRef.current) groupRef.current.visible = true;
     groupRef.current?.scale.set(1, 1, 1);
   };
 
 
-  useFrame(() => {
+  useFrame((state, delta) => {
+
+    // 圖片旋轉
+    if (imgRotate.current) {
+      imgRotate.current.rotation.z += delta * 0.5;
+    }
+
+    if(ringRotate.current) {
+      ringRotate.current.rotation.z -= delta * 0.3;
+    }
+
     // 處理 Replay 點擊後的縮放動畫與 3 秒倒數
     if ( isAnimating.current && groupRef.current) {
       const elapsedTime = (Date.now() - replayStartTime.current); // 經過的毫秒數
@@ -799,6 +827,10 @@ export const ShowStop = ({ setStatus, setStop, getUseMouse, getStop , getStatus}
         setShowReplayText(false);            // 關閉顯示倒數文字
         isAnimating.current = false;         // 關閉動畫
       }
+
+      if(getStatus != 3 ){
+        groupRef.current.visible = false;
+      }
     }
 
     //滑鼠觸碰觸發的動畫
@@ -816,17 +848,11 @@ export const ShowStop = ({ setStatus, setStop, getUseMouse, getStop , getStatus}
     const isInReplayRange = normalAngle >= 0 && normalAngle <= Math.PI;
     const isInExitRange = normalAngle > Math.PI && normalAngle <= TWO_PI;
 
-    if (replayMeshRef.current) {
+    if (replayMeshRef.current ) {
       replayMeshRef.current.position.z = isInReplayRange ? 0.3 : 0;
-      replayMeshRef.current.material.color.set(
-        isInReplayRange ? "rgb(216, 108, 66)" : "rgb(100, 100, 100)"
-      );
     }
-    if (exitMeshRef.current) {
+    if (exitMeshRef.current ) {
       exitMeshRef.current.position.z = isInExitRange ? 0.3 : 0;
-      exitMeshRef.current.material.color.set(
-        isInExitRange ? "rgb(30, 130, 202)" : "rgb(100, 100, 100)"
-      );
     }
   })
 
@@ -835,31 +861,68 @@ export const ShowStop = ({ setStatus, setStop, getUseMouse, getStop , getStatus}
     <group>
       <group ref={groupRef} position={[0, 0, 0.2]}>
         {/*replay*/}
-        <mesh ref={replayMeshRef} onPointerDown={handleReplayClick}>
-          <ringGeometry args={[gameAreaRingRadiusIn-3, gameAreaRingRadiusIn-1 , 32, 1, 0, Math.PI]} /> 
-          <meshStandardMaterial />
-        </mesh>
-        <mesh position={[0, 0, -0.5]}>
-          <ShowGameSongTextStand shouldRotate={false} whichGet={"Menu"} offset={0} r={gameAreaRingRadiusIn -2.5}  step={0.3} offset2={-Math.PI/2} textSize={1} color={"white"} fillOpacity={1} />
+        <mesh ref={replayMeshRef} onPointerDown={handleReplayClick} 
+                                  onPointerOver={() => setIsTouchReplay(true)} 
+                                  onPointerOut={() => setIsTouchReplay(false)} 
+        >
+          <mesh >
+            <ringGeometry args={[gameAreaRingRadiusIn - 3.5, gameAreaRingRadiusIn - 2.7, 32, 1, 0, Math.PI]} /> 
+            <meshStandardMaterial color = {colorReplay}/>
+          </mesh>
+          <mesh position={[0, 0, 0.01]}>
+            <ShowGameSongText  shouldRotate={false} whichGet={"Replay"} offset={0} r={gameAreaRingRadiusIn -3.05} step={0.3} offset2={Math.PI/2} textSize={0.7} color={"rgb(78,78,78)"} isCenter={true} />
+          </mesh>
         </mesh>
 
-        {/*exit*/}
-        <mesh ref={exitMeshRef} onPointerDown={() => setStatus(0)}>
-          <ringGeometry args={[gameAreaRingRadiusIn-3, gameAreaRingRadiusIn-1 , 32, 1, Math.PI, Math.PI]} /> 
-          <meshStandardMaterial />
+        {/*Menu(exit)*/}
+        <mesh ref={exitMeshRef} onPointerDown={() => setStatus(0)}
+                                onPointerOver={() => setIsTouchMenu(true)} 
+                                onPointerOut={() => setIsTouchMenu(false)} 
+        >
+          <mesh rotation={[0, 0, Math.PI]}>
+              <ringGeometry args={[gameAreaRingRadiusIn - 3.5, gameAreaRingRadiusIn - 2.7, 32, 1, 0, Math.PI]} /> 
+              <meshStandardMaterial color={colorMenu}/>
+          </mesh>
+          <mesh position={[0, 0, 0.01]}>
+           <ShowGameSongText  shouldRotate={false} whichGet={"Menu"} offset={0} r={gameAreaRingRadiusIn -3.05} step={0.3} offset2={-Math.PI/2} textSize={0.7} color={"rgb(78, 78, 78)"}  isCenter={true} />
         </mesh>
-        <mesh position={[0, 0, -0.5]}>
-          <ShowGameSongTextStand shouldRotate={false} whichGet={"Replay"} offset={0} r={gameAreaRingRadiusIn -2.5}  step={0.3} offset2={Math.PI/2} textSize={1} color={"white"} fillOpacity={1} />
         </mesh>
+       
 
         {/*裝飾*/}
-        <mesh position={[0, 0, 0.5]}>
-           {/* args: [圓環半徑, 管身厚度, 徑向分段, 圓周分段, 弧長角度] */}
-          <Torus args={[1.5, 0.02, 16, 64, 5.2]} />
-          <ringGeometry args={[4.17, 4.2 , 64, 1]} /> 
-          <meshStandardMaterial color={"white"} />
+        <mesh ref={imgRotate} position={[0,0,0]} >
+          <circleGeometry args={[playerMarkIn-0.1, 32]} /> 
+          <meshBasicMaterial map={proxyImageUrl || null} />
         </mesh>
+        <mesh position={[0,0,-0.001]} >
+          <circleGeometry args={[playerMarkIn-0.08 , 32]} /> 
+          <meshBasicMaterial color={"rgb(255, 255, 255)"} />
+        </mesh>
+        <mesh position={[0,0,0.002]} >
+          <circleGeometry args={[0.3, 32]} /> 
+          <meshBasicMaterial color={"rgb(31, 28, 28)"} transparent={true} opacity={0.3}/>
+        </mesh>
+        <mesh position={[0,0,0.003]} >
+          <circleGeometry args={[0.27, 32]} /> 
+          <meshBasicMaterial color={"rgb(0, 0, 0)"} transparent={true} opacity={0.9}/>
+        </mesh>
+        <mesh position={[0,0,0.004]} >
+          <circleGeometry args={[0.27, 32]} /> 
+          <meshBasicMaterial color={"rgb(0, 0, 0)"} transparent={true} opacity={0.9}/>
+        </mesh>
+        
+        {/*ring*/}
+        <group ref={ringRotate} position={[0,0,0]} >
+          <mesh>
+           <ringGeometry args={[playerMarkIn+0.2 , playerMarkIn+0.2+0.02, 32 , 1 , 0 , Math.PI/2]} />
+          </mesh>
+          <mesh rotation={[0,0,Math.PI]}>
+           <ringGeometry args={[playerMarkIn+0.2 , playerMarkIn+0.2+0.02, 32 , 1 , 0 , Math.PI/2]} />
+          </mesh>
+          <meshBasicMaterial color={"rgb(255, 255, 255)"} transparent={true} opacity={0.9}/>
+        </group>
       </group>
+      ringRotate
 
       {showReplayText && (
         <group ref={textAngle} position={[0,0,0.1]}>
@@ -1213,6 +1276,11 @@ export const JudgeTextComponent = ( ) => {
               anchorX="center"
               anchorY="middle"
               fillOpacity={transparency}
+              // Troika Text uses its own shader. Make the blend state explicit so
+              // the same fade is used by the WebXR stereo renderer as in desktop.
+              material-transparent
+              material-depthWrite={false}
+              renderOrder={10}
             >
               {char}
             </Text>
@@ -1254,6 +1322,9 @@ export const CommboTextComponent = ( ) => {
               anchorX="center"
               anchorY="middle"
               fillOpacity={transparency}
+              material-transparent
+              material-depthWrite={false}
+              renderOrder={10}
             >
               {char}
             </Text>
@@ -1472,25 +1543,44 @@ export const ShoeGameSongText = ({ getChose }) => {
 // 持續資料取得================================================================================
 //==========================================================================================
  // VR =====================================================================================
+const forwardVector = new THREE.Vector3();
+
 export const VRTracker = () => {
   const setAngles = useVRStore((state) => state.setAngles);
-  
-  const rotation = new THREE.Euler();
-  const quaternion = new THREE.Quaternion();
 
   useFrame((state) => {
-    state.camera.getWorldQuaternion(quaternion);
-    rotation.setFromQuaternion(quaternion);
+    const xrCamera = state.gl.xr.isPresenting
+      ? state.gl.xr.getCamera()
+      : null;
 
-    const angleZR = rotation.z;
-    const angleZLimR = ((angleZR + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+    // WebXR returns an ArrayCamera. Its own transform is a render container,
+    // not necessarily the headset pose; use an eye camera, which is updated
+    // directly from the XRViewerPose every frame. This prevents pitch/roll
+    // from leaking into the yaw used by gameplay.
+    const camera = xrCamera?.isArrayCamera
+      ? (xrCamera.cameras[0] ?? state.camera)
+      : (xrCamera ?? state.camera);
 
-    setAngles(angleZLimR);  // 直接更新 Zustand store
+    camera.getWorldDirection(forwardVector);
+
+    // Keep only the headset's horizontal heading.
+    forwardVector.y = 0;
+    const horizontalLengthSq = forwardVector.lengthSq();
+    if (horizontalLengthSq < Number.EPSILON) return;
+    forwardVector.multiplyScalar(1 / Math.sqrt(horizontalLengthSq));
+
+    // WebXR's forward (-Z) maps to the top of this XY game board, which is
+    // 90 degrees clockwise from the mathematical angle returned above.
+    let angle = Math.atan2(forwardVector.x, forwardVector.z) - Math.PI / 2;
+    if (angle < 0) {
+      angle += 2 * Math.PI;
+    }
+
+    setAngles(angle);
   });
 
   return null;
 };
-
  // mouse =====================================================================================
 export const MouseRXTracker = () => {
   const setMouseXR = useMouseStore.getState().setMouseXR;
