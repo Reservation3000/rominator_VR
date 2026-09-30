@@ -7,10 +7,10 @@ export const useVRStore = create((set) => ({
   setAngles: (angleR) => set({ angleR }),
 }));
 
-export const useMouseStore = create((set) => ({
-  mouseXR: 0,
-  setMouseXR: (mouseXR) => set({ mouseXR }),
-}));
+// export const useMouseStore = create((set) => ({
+//   mouseXR: 0,
+//   setMouseXR: (mouseXR) => set({ mouseXR }),
+// }));
 
 // Zustand store for rotate judge angle===============================================
 export const useRotateJudgeResult = create((set) => ({
@@ -28,7 +28,7 @@ export const useRotateJudgeResult = create((set) => ({
         rotateJudgeAngle: angle,
         lastRotateEvent: {
           direction: angle,
-          musicTimeMs,
+          musicTimeMs: musicTimeMs,
         },
       };
     }),

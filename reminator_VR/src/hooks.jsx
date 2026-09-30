@@ -3,7 +3,6 @@ import { useFrame} from '@react-three/fiber';
 import {
   useRotateJudgeResult,
   useVRStore,
-  useMouseStore,
   useMusicTimeStore,
 } from './store.js';
 
@@ -37,7 +36,7 @@ export function useFadeOut(trigger , starValue , triggerValue) {
 }
 
 // 自訂 Rotate 旋轉判定的 function ==================================================
-export function useRotateJudge(getUseMouse) {
+export function useRotateJudge() {
   const setRotateJudgeResult = useRotateJudgeResult((state) => state.setRotateJudgeResult);
   const resetRotateJudgeResult = useRotateJudgeResult((state) => state.resetRotateJudgeResult);
 
@@ -53,8 +52,7 @@ export function useRotateJudge(getUseMouse) {
 
   useFrame(() => {
     const angleVR = useVRStore.getState().angleR;
-    const mouseXR = useMouseStore.getState().mouseXR;
-    const currentRadian = getUseMouse ? angleVR : mouseXR;
+    const currentRadian = angleVR ;
     const musicTimeMs = useMusicTimeStore.getState().musicTimeMs;
 
     // 累積每一幀的最短角度差，避免穿越 0 / 360 度時被判成反方向。

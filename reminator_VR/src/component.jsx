@@ -3,8 +3,9 @@ import { useRef, useEffect, useState, useMemo } from 'react';
 import {  Drawer , Switch } from 'antd';
 import { UnorderedListOutlined } from '@ant-design/icons';
 import  Papa  from  'papaparse' ;
-import { Text , useTexture , Torus} from '@react-three/drei';
+import { Text , useTexture , Torus , Stars} from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
+import {Howl,Howler} from 'howler';
 import * as THREE from 'three';
 
 import { 
@@ -22,12 +23,10 @@ import {
   seatRingRadiusIn,  
   seatRingRadiusOut,   
   playerMarkIn,
-  playerMarkOut,
-  noteSpeed
+  playerMarkOut
 } from "./constants.js";
 
 import { useVRStore , 
-         useMouseStore, 
          useMusicTimeStore , 
          usePerfectStore , 
          useGoodStore , 
@@ -79,6 +78,16 @@ const isAngleInRange = (angle, rangeL, rangeR) => {
   }
 
   return normalizedAngle >= normalizedRangeL || normalizedAngle <= normalizedRangeR;
+};
+
+const unlockGameAudioContext = () => {
+  Howler.autoSuspend = false;
+  const audioContext = Howler.ctx;
+  if (audioContext?.state === 'suspended') {
+    audioContext.resume().catch((error) => {
+      console.warn('Unable to resume game audio context:', error);
+    });
+  }
 };
 
 // 躺著的文字，圍繞圓心 ( 是否啟用旋轉 , 顯示的文字 , 的弧度偏移 , 距離圓心的半徑 , 間隔弧度 , 旋轉角度偏移 , 文字大小 , 顏色 , 是否中心對齊 )
@@ -193,6 +202,21 @@ function PopAnimation(trigger , enterX, enterY, enterz , targetXY , lambda ){
 
   return value;
 }
+
+// 星空
+export const RotatingStars = () => {
+  const starsGroupRef = useRef();
+
+  useFrame((state, delta) => {
+    if (!starsGroupRef.current) return;
+    starsGroupRef.current.rotation.y += 0.003 * delta;
+  });
+
+  return <Stars ref={starsGroupRef} radius={3} depth={20} count={300} factor={2} saturation={50} fade speed={1} />;
+}
+
+
+
 //==========================================================================================
 // Menu 0===================================================================================
 //==========================================================================================
@@ -288,6 +312,7 @@ const SongCard3D = ({ song, angle, isInRange, setTouch, setChose, setStatus,setS
           position={[0, 0, 0]}
           onPointerDown={() => {
             if (isInRange) {
+              unlockGameAudioContext();
               setStop(true);
 
               setNoteCSVData([]);
@@ -357,7 +382,7 @@ const SongCard3D = ({ song, angle, isInRange, setTouch, setChose, setStatus,setS
 };
 
 // 選歌機制 + SongCard3D 渲染
-export const MenuComponent = ({ getsongs, setTouch, setChose, getTouch, setStatus, getStatus, getPage, getUseMouse,setStop, setNoteCSVData }) => {
+export const MenuComponent = ({ getsongs, setTouch, setChose, getTouch, setStatus, getStatus, getPage, setStop, setNoteCSVData }) => {
 
   const scale = PopAnimation(getStatus , 0.8, 0.8, 1, 1, 30);
 
@@ -370,11 +395,8 @@ export const MenuComponent = ({ getsongs, setTouch, setChose, getTouch, setStatu
   );
 
   const VRangle = useVRStore((state) => state.angleR) * (180/Math.PI);     // 將 VRangle 轉為角度
-  const mouseXD = useMouseStore((state) => state.mouseXR) * (180/Math.PI); // 將 mouseXR 轉換為角度
-
   const vrMenuAngle = (VRangle + 360) % 360;
-  const mouseAngle = (mouseXD + 360) % 360;
-  const whichAngleUse = getUseMouse ? vrMenuAngle : mouseAngle;
+  const whichAngleUse = vrMenuAngle ;
 
 
   useEffect(() => {
@@ -505,7 +527,7 @@ export const MenuMusicComponent = ({ getTouch , getStatus}) => {
 //==========================================================================================
 
 /* 把getChose的樂曲資料，抓csv資料並做分類處裡，並丟進setNoteCSVData */
-export const ProcessChoseCSVData = ({ getChose , setNoteCSVData , setGameStarPosition }) => {
+export const ProcessChoseCSVData = ({ getChose , setNoteCSVData , setGameStarPosition , getOffset , getSpeed}) => {
   useEffect(() =>{
     const loadCsv = async () => {
       if(!getChose) return [];
@@ -539,20 +561,20 @@ export const ProcessChoseCSVData = ({ getChose , setNoteCSVData , setGameStarPos
           const type = row[0]; // 第一欄：類型
 
           if (type === 'note') {
-            let triggerTime = (row[1] || 0) + firstLineInt;
+            let triggerTime = (row[1] || 0) + firstLineInt + getOffset;
             let noteLand = row[2];
             data.push({ type, triggerTime, noteLand });
           } 
           else if (type === 'drag') {
-            let triggerTimeStart = (row[1] || 0) + firstLineInt;
-            let triggerTimeEnd = (row[2] || 0) + firstLineInt;
+            let triggerTimeStart = (row[1] || 0) + firstLineInt + getOffset;
+            let triggerTimeEnd = (row[2] || 0) + firstLineInt + getOffset;
             let noteLandStart = row[3];
             let noteLandEnd = row[4];
             let direction = row[5];
             data.push({ type, triggerTimeStart, triggerTimeEnd, noteLandStart, noteLandEnd, direction });
           } 
           else if (type === 'rotate') {
-            let triggerTime = (row[1] || 0) + firstLineInt;
+            let triggerTime = (row[1] || 0) + firstLineInt + getOffset;
             let direction = row[2];
             data.push({ type, triggerTime, direction });
           }
@@ -564,7 +586,7 @@ export const ProcessChoseCSVData = ({ getChose , setNoteCSVData , setGameStarPos
           return {
             ...item,
             density: density,
-            noteSpeed: noteSpeed,
+            noteSpeed: getSpeed,
             startPosition: startPosition,
             endPosition: endPosition,
             lifePosition: endPosition - 0.2,
@@ -578,7 +600,7 @@ export const ProcessChoseCSVData = ({ getChose , setNoteCSVData , setGameStarPos
         } else {
           return {
             ...item,
-            noteSpeed: noteSpeed,
+            noteSpeed: getSpeed,
             startPosition: startPosition,
             endPosition: endPosition,
             lifePosition: endPosition - 0.1,
@@ -749,7 +771,7 @@ function ResetSongJudgeData(){
 // =========================================================================================
 // 暫停畫面 2.5 ============================================================================
 // ========================================================================================
-export const ShowStop = ({ setStatus, setStop, getUseMouse, getChose , getStatus}) => {
+export const ShowStop = ({ setStatus, setStop , getChose , getStatus}) => {
 
   // img Url
    const proxyImageUrl = useTexture(getChose?.img ? `${getChose.img}?url=${encodeURIComponent(getChose.img)}` : undefined);
@@ -835,8 +857,7 @@ export const ShowStop = ({ setStatus, setStop, getUseMouse, getChose , getStatus
 
     //滑鼠觸碰觸發的動畫
     const angleVR = useVRStore.getState().angleR;
-    const mouseXR = useMouseStore.getState().mouseXR;
-    const angle = getUseMouse ? angleVR : mouseXR;
+    const angle =  angleVR ;
 
      if (textAngle.current) {
       textAngle.current.rotation.z = angle;
@@ -973,64 +994,98 @@ export const Box = ({ position }) => {
   );
 };
 
-export const GameMusicLogic = ({ gameAudioRef , getChose, getStop, getStatus }) => {
+export const GameMusicLogic = ({ gameAudioRef , getChose, setStop , getStop, getStatus ,setStatus}) => {
   const audioRef = gameAudioRef;
   const audioSrc = getChose?.mp3;
 
   const setMusicTimeMs = useMusicTimeStore.getState().setMusicTimeMs;
 
-  // 更新音樂時間=======================================
+
+ // 1. 初始化與清理 Howl 音訊實例 ===================
+  useEffect(() => {
+    if (!audioSrc) return;
+
+    const sound = new Howl({
+      src: [audioSrc],
+      html5: false, // 使用 Web Audio API 以取得高精度時間與即時反應
+      onend: () => {
+        if (setStatus) setStatus(4);
+      },
+      onplay: () => {
+        if (setStop) setStop(false);
+      },
+      onpause: () => {
+        if (setStop) setStop(true);
+      },
+    });
+
+    console.log(Howler.ctx?.baseLatency);
+    console.log(Howler.ctx?.outputLatency);
+
+    audioRef.current = sound;
+
+    // 清理機制：切換歌曲或組件卸載時銷毀舊音訊
+    return () => {
+      sound.unload();
+      audioRef.current = null;
+    };
+  }, [audioSrc]);
+
+  // 2. 每幀更新音樂時間 (毫秒) =========================
   useFrame(() => {
-    if (audioRef.current && !getStop) {
-      setMusicTimeMs(Math.floor(audioRef.current.currentTime * 1000));
+    const sound = audioRef.current;  // 獲取音訊實例
+    const latencyMs =((Howler.ctx?.baseLatency ?? 0) +(Howler.ctx?.outputLatency ?? 0)) * 1000; // 計算總延遲時間（毫秒）
+    if (sound && sound.playing() && !getStop) {
+      // sound.seek() 回傳當前播放時間（秒）
+      const currentTimeSec = sound.seek();
+      if (typeof currentTimeSec === 'number') {
+        setMusicTimeMs(Math.floor(currentTimeSec * 1000 - latencyMs));
+      }
     }
   });
 
-  // 如果狀態不是 3 或 3.5，暫停並重置音樂===============
+  // 3. 狀態控管與播放 / 暫停處理 =======================
   useEffect(() => {
-    if (!audioRef.current) return;
+    const sound = audioRef.current;
+    if (!sound) return;
 
-    if (getStatus !== 3 && getStatus !== 3.5) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
+    const isTargetStatus = getStatus === 3 || getStatus === 3.5;
+
+    // 狀態不符合 3 或 3.5 時，停止並重置時間為 0
+    if (!isTargetStatus) {
+      sound.stop(); // Howler 的 stop() 會自動暫停並將播放進度重置到 0
+      return;
     }
-  }, [getStatus]);
 
-  // 處理音樂的 播放/暫停 ==========================
-  useEffect(() => {
-    if (!audioRef.current) return;
-
+    // 處理 播放 / 暫停
     if (getStop) {
-      audioRef.current.pause();
+      if (sound.playing()) sound.pause();
     } else {
-      audioRef.current.play().catch(() => {});
+      let cancelled = false;
+      const startPlayback = () => {
+        if (!cancelled && !sound.playing()) sound.play();
+      };
+      const audioContext = Howler.ctx;
+
+      if (audioContext?.state === 'suspended') {
+        audioContext.resume().then(startPlayback).catch((error) => {
+          console.error('Unable to start game audio:', error);
+        });
+      } else {
+        startPlayback();
+      }
+
+      return () => {
+        cancelled = true;
+      };
     }
-  }, [getStop, audioSrc]);
+  }, [audioSrc, getStop, getStatus]);
 
-  return null; // 只處理音樂邏輯
-};
-
-export const GameMusicPlay = ({ audioRef, audioSrc, getStop , setStatus, getStatus , setStop }) => {
-  const resolvedAudioSrc = typeof audioSrc === 'string' ? audioSrc : audioSrc?.mp3;
-
-  if (!resolvedAudioSrc || (getStatus !== 3 && getStatus !== 3.5)) return null;
-
-  return (
-    <audio
-      key={resolvedAudioSrc}
-      ref={audioRef}
-      src={resolvedAudioSrc}
-      autoPlay={!getStop}
-      onPlay={() => setStop(false)}
-      onPause={() => setStop(true)}
-      onEnded={() => setStatus(4)}
-      style={{ display: 'none' }}
-    />
-  );
+  return null; // 完全無需渲染任何 HTML 元素
 };
 
 // ref
-export const GameStar = ({ getGameStarPosition , getUseMouse , setStop , setStatus}) => {
+export const GameStar = ({ getGameStarPosition , setStop , setStatus}) => {
 
 
   const [isInStarRange, setIsInStarRange] = useState(false);
@@ -1077,8 +1132,7 @@ export const GameStar = ({ getGameStarPosition , getUseMouse , setStop , setStat
 
     useFrame((state, delta) => {
       const angleVR = useVRStore.getState().angleR;
-      const mouseXR = useMouseStore.getState().mouseXR;
-      const playerAngle = getUseMouse ? angleVR : mouseXR;
+      const playerAngle = angleVR ;
 
       const diff = Math.atan2(Math.sin(playerAngle - ringAngle),Math.cos(playerAngle - ringAngle),);
 
@@ -1157,7 +1211,7 @@ export const GameStar = ({ getGameStarPosition , getUseMouse , setStop , setStat
   );
 };
 
-export const PlayerMark = ({ getUseMouse }) => {
+export const PlayerMark = ( ) => {
   const arcLong = (Math.PI / 16) + 0.5
   const halfArcLong = arcLong/2
 
@@ -1168,8 +1222,7 @@ export const PlayerMark = ({ getUseMouse }) => {
     if (!angleRef.current) return;
 
     const angleVR = useVRStore.getState().angleR;         // 訂閱VR角度
-    const mouseXR = useMouseStore.getState().mouseXR;     //訂閱mouse角度
-    const angle = getUseMouse ? angleVR : mouseXR;        // 如果 getUseMouse 為 true，使用 VR 的角度，否則使用 0
+    const angle = angleVR ;
 
     if (!Number.isFinite(angle)) return;
 
@@ -1581,40 +1634,43 @@ export const VRTracker = () => {
 
   return null;
 };
- // mouse =====================================================================================
-export const MouseRXTracker = () => {
-  const setMouseXR = useMouseStore.getState().setMouseXR;
-
-  useEffect(() => {
-    const handleMouseMove = (event) => {
-      const width = window.innerWidth;
-      if (width === 0) return;
-      const nextAngle = (event.clientX / width) * Math.PI * 6 + Math.PI;
-      setMouseXR(nextAngle);  // 角度寫入 Zustand
-    };
-
-    // window.addEventListener(...)：告訴瀏覽器【監聽全域視窗的某個動作】
-    // pointermove'：監聽的事件名稱，同時支援滑鼠移動、觸控螢幕滑動（Touch）與觸控筆（Stylus）
-    // handleMouseMove：事件發生時要執行的函式（Callback）
-    window.addEventListener('pointermove', handleMouseMove);
-    // return () => { ... }：這是在 React useEffect 中特有的清理語法。當元件卸載（Unmount，例如使用者換頁）或元件重新渲染前，React 會自動執行這個 return 後面的函式。
-    return () => window.removeEventListener('pointermove', handleMouseMove);
-  }, [setMouseXR]);
-
-  return null;
-};
 
 //==========================================================================================
 //fix component=============================================================================
 //==========================================================================================
 
-export const SliderComponent = ({setVal}) => {
+export const SliderComponent = ({ setOffset, getOffset , setSpeed , getSpeed}) => {
   return (
-    <div className="slider">
-      <Slider defaultValue={1} min={0.35} max={1} step={0.01} onChange={(v) => setVal(v)}/>
+    <div>
+      <div className="slider" style={{ display: 'flex', alignItems: 'center',  gap: '12px' }}>
+        <Slider
+          defaultValue={getOffset} 
+          min={-200}
+          max={200}
+          step={1}
+          onChange={(v) => setOffset(v)}
+          style={{ flex: 1 }} 
+        />
+        <span style={{ minWidth: '60px', textAlign: 'right' }}>
+          offset_{getOffset > 0 ? `+${getOffset}` : getOffset} ms
+        </span>
+      </div>
+      <div className="slider" style={{ display: 'flex', alignItems: 'center',  gap: '12px' }}>
+        <Slider
+          value={getSpeed}
+          min={0.01}
+          max={0.1}
+          step={0.002}
+          onChange={(v) => setSpeed(v)}
+          style={{ flex: 1 }} 
+        />
+        <span style={{ minWidth: '60px', textAlign: 'right' }}>
+          speed_{getSpeed.toFixed(2)} x
+        </span>
+      </div>
     </div>
   );
-}
+};
 
 export const StatusControl = ({ setStatus }) => {
   const handleKeyDown = (event) => {
@@ -1640,7 +1696,7 @@ export const StatusControl = ({ setStatus }) => {
   return null;
 };
 
-export const SideBar = ({ setUseMouse , setRotateCanva}) => {
+export const SideBar = ({ setRotateCanva , setOffset , getOffset, setSpeed, getSpeed}) => {
 
   // 是否開啟維修介面================================
   const [open, setOpen] = useState(false);
@@ -1654,12 +1710,6 @@ export const SideBar = ({ setUseMouse , setRotateCanva}) => {
   };
 
   //================================================
-    const onChangeUseMouse = checked => {
-      if (setUseMouse) { setUseMouse(checked); 
-        console.log(`Use Mouse : ${checked}`);
-      }
-    };
-
     const onChangeUseRotateCanva = checked => {
       if (setRotateCanva) { setRotateCanva(checked); 
         console.log(`Use Rotate Canva : ${checked}`);
@@ -1677,13 +1727,12 @@ export const SideBar = ({ setUseMouse , setRotateCanva}) => {
         onClose={onClose}
         open={open}
       >
-        <div>
-          <Switch defaultChecked={false} onChange={onChangeUseMouse} />  Use VR to control  rotation
-        </div>
         
         <div>
-          <Switch defaultChecked={false} onChange={onChangeUseRotateCanva} />  Use Canva to ground 
+          <Switch defaultChecked={true} onChange={onChangeUseRotateCanva} />  Use VR view 
         </div>
+
+        <SliderComponent setOffset={setOffset} getOffset={getOffset} setSpeed={setSpeed} getSpeed={getSpeed} />
         
       </Drawer>
     </>

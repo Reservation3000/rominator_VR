@@ -1,6 +1,5 @@
+
 export const serverURL = "http://localhost:8081/api/VRmgDB/data";
-// export const audioProxyURL = "https://mg.reservationfurry.art/assest/hit.mp3";
-export const HDRIProxyURL = "https://mg.reservationfurry.art/assest/baseHDR.exr";
 
 //歌曲選單配置==============================================================================================
 export const SongCard3DRadius = 4.0;        //歌曲選單，大圓半徑
@@ -20,12 +19,12 @@ export const playerMarkOut = seatRadius + 0.1;       //玩家位置_環_外圈�
 // 音符配置 ================================================================================================
 export const startPosition = gameAreaRingRadiusIn;     //起始位置 + 遊戲範圍
 export const endPosition = seatRadius + 0.15 ;         //結束判定位置
-export const noteSpeed = 0.05;                         //每經過 1Frame，音符應該移動多少距離（單位_距離 / 影格）
+
 // 判定
 export const perfectRange = 15;       // perfect 判定角度範圍
 export const goodRange = 30;          // good 判定角度範圍
 export const prefectTime = 15;        // Perfect 判定時間範圍（毫秒）
-export const lifeTime = 300;           // 生命時間
+export const lifeTime = 200;           // 生命時間
 
 // note
 export const everyLandAngle = Math.PI / 16;     // 單一軌道的角度寬度

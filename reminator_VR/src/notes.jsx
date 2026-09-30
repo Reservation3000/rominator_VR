@@ -11,7 +11,6 @@ import {  perfectRange ,
 import { useRotateJudge } from './hooks.jsx';
 
 import {  useVRStore , 
-          useMouseStore , 
           useRotateJudgeResult,
           useMusicTimeStore ,
           usePerfectStore,
@@ -22,18 +21,18 @@ import {  useVRStore ,
           useJudgeStatus
          } from './store.js';
 
-import { useEffect,useMemo,useRef } from 'react';
+import { useEffect,useMemo,useRef} from 'react';
 
 import { useFrame } from '@react-three/fiber';
 
 
 
-export const LogicOfNotes = ({ onlyNotes , getUseMouse }) => {
+export const LogicOfNotes = ({ onlyNotes }) => {
   
   const meshRef = useRef([]);  // 改變3D物件的參考
   const notesRef = useRef([]);   // 儲存音符的狀態
-  const activeNoteIndicesRef = useRef([]);
-  const nextNoteIndexRef = useRef(0);
+  const activeNoteIndicesRef = useRef([]);  // 儲存目前正在動畫中的音符索引
+  const nextNoteIndexRef = useRef(0);    // 儲存下一個要進入動畫的音符索引
   const orderedNotes = useMemo(
     () => [...onlyNotes].sort((left, right) => left.triggerTime - right.triggerTime),
     [onlyNotes],
@@ -54,8 +53,8 @@ export const LogicOfNotes = ({ onlyNotes , getUseMouse }) => {
       ...note,
     }));
 
-    meshRef.current.length = orderedNotes.length;
-    activeNoteIndicesRef.current = [];
+    meshRef.current.length = orderedNotes.length;  
+    activeNoteIndicesRef.current = [];   
     nextNoteIndexRef.current = 0;
   }, [orderedNotes]);
 
@@ -64,9 +63,8 @@ export const LogicOfNotes = ({ onlyNotes , getUseMouse }) => {
 
     const musicTimeMs = useMusicTimeStore.getState().musicTimeMs;
     const angleVR = useVRStore.getState().angleR;
-    const mouseXR = useMouseStore.getState().mouseXR;
+    const angle = angleVR ;
 
-    const angle = getUseMouse ? angleVR : mouseXR;
     const notes = notesRef.current;
     const activeNoteIndices = activeNoteIndicesRef.current;
 
@@ -151,7 +149,7 @@ export const LogicOfNotes = ({ onlyNotes , getUseMouse }) => {
   );
 };
 
-export const LogicOfDarg = ({ onlyDrag , getUseMouse }) => {
+export const LogicOfDarg = ({ onlyDrag }) => {
   // meshRefs[dragIndex][segmentIndex]
   const meshRefs = useRef([]);
   const dragRef = useRef([]);
@@ -189,8 +187,7 @@ export const LogicOfDarg = ({ onlyDrag , getUseMouse }) => {
   useFrame(() => {
     const musicTimeMs = useMusicTimeStore.getState().musicTimeMs;
     const angleVR = useVRStore.getState().angleR;
-    const mouseXR = useMouseStore.getState().mouseXR;
-    const playerAngle = getUseMouse ? angleVR : mouseXR;
+    const playerAngle = angleVR;
 
 
     for (let dragIndex = 0; dragIndex < dragRef.current.length; dragIndex++) {
@@ -365,9 +362,9 @@ export const LogicOfDarg = ({ onlyDrag , getUseMouse }) => {
   );
 };
 
-export const LogicOfRotate = ({ onlyRotate , getUseMouse }) => {
+export const LogicOfRotate = ({ onlyRotate }) => {
   
-  useRotateJudge(getUseMouse); // 呼叫自訂的 hook 來判定旋轉方向
+  useRotateJudge(); // 呼叫自訂的 hook 來判定旋轉方向
   const meshRef = useRef([]);  // 改變3D物件的參考
   const rotatesRef = useRef([]);   // 儲存音符的狀態
 
@@ -496,3 +493,4 @@ export const LogicOfRotate = ({ onlyRotate , getUseMouse }) => {
     </>
   );
 };
+

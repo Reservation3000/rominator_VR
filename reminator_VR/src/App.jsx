@@ -13,11 +13,11 @@ import {
   MenuComponent,
   MenuMusicComponent,
   ShowChoseSong,
+  RotatingStars,
   BackImg,
   MenuPageSwitchBottom,
   ProcessChoseCSVData,
   GameMusicLogic,
-  GameMusicPlay,
   PlayerMark,
   PuaseButtom,
   ShowStop,
@@ -28,19 +28,13 @@ import {
   ShowChoseSongScoresImg,
   StatusControl,
   VRTracker,
-  MouseRXTracker,
   SideBar,
   GameStar ,
   ShoeGameSongBox
 } from "./component.jsx";
 
-import { useMusicTimeStore } from "./store.js";
 
-import { 
-  HDRIProxyURL,
- } from "./constants.js";
-
-
+import HDRI from "./assets/baseHDR.exr?url";  //背景
 
 const xrStore = createXRStore({
   originReferenceSpace: 'local-floor', // 讓系統以地面為基準計算高度
@@ -49,6 +43,8 @@ const xrStore = createXRStore({
   controller: true,  // 啟用控制器
 });
 
+
+
 //===============================
 //  App 
 //===============================
@@ -56,8 +52,7 @@ const xrStore = createXRStore({
 function App() {
 
   {/*fix*/}
-  const [getUseMouse, setUseMouse] = useState(false); // 是否使用滑鼠控制旋轉
-  const [getRotateCanva , setRotateCanva] = useState(false); //是否將畫布貼到地面
+  const [getRotateCanva , setRotateCanva] = useState(true); //是否將畫布貼到地面
   const gameAudioRef = useRef(null);
 
 
@@ -70,6 +65,9 @@ function App() {
   const [getStop, setStop] = useState(true);       // 遊戲暫停按鈕(false撥放)
   const [getGameStarPosition, setGameStarPosition] = useState(0); // 遊戲開始位置
 
+  const [getOffset, setOffset] = useState(0);       // 滑桿 => 譜面偏移量
+  const [getSpeed, setSpeed] = useState(0.05);      // 滑桿 => 譜面速度_每經過 1Frame，音符應該移動多少距離（單位_距離 / 影格）
+
 
 
   const songTotal = getsongs.length;       // 有幾首歌
@@ -80,6 +78,8 @@ function App() {
   const onlyDrag = useMemo(() => getNoteCSVData.filter((note) => note.type === 'drag'), [getNoteCSVData]);
 
   const rotateCanvaX = getRotateCanva ? -Math.PI / 2 : 0;
+
+
   //===============================================================
   // return =======================================================
   //===============================================================
@@ -88,23 +88,23 @@ function App() {
       <LoadData setSongs={setSongs} />
 
       <Canvas gl={{ toneMappingExposure: 1 }} 
-              camera={{ fov: 50, near: 0.1, far: 20, position: [0, 0, 20]}}>
+              camera={{ fov: 50, near: 0.1, far: 100, position: [0, 0, 12], rotation: [45, 0, 0]}}>
 
         <XR store={xrStore}>
 
           <OrbitControls enableDamping={true} dampingFactor={0.1} />
           <StatusControl setStatus={setStatus} />
           <VRTracker  />
-          <MouseRXTracker  />
-          <Environment files={HDRIProxyURL} background />
+          <Environment files={HDRI} background />
+          <RotatingStars />
           <ambientLight intensity={3} color="white" />
-          <group className="canva" position={[0, 0, 0]} rotation={[rotateCanvaX, 0, 0]}>
-            <PlayerMark getUseMouse={getUseMouse} />
+          <GameMusicLogic gameAudioRef={gameAudioRef} getChose={getChose} setStop={setStop} getStop={getStop} getStatus={getStatus} setStatus={setStatus} />
+          <group className="canva" position={[0, -1.3, 0]} rotation={[rotateCanvaX, 0, 0]}>
+            <PlayerMark />
             {(getStatus === 0) && (
               <group>
                 <Roundabout />
                 <MenuComponent
-                  getUseMouse={getUseMouse}
                   getsongs={getsongs}
                   setTouch={setTouch}
                   getTouch={getTouch}
@@ -123,7 +123,7 @@ function App() {
 
             {(getStatus === 1) && (
               <group>
-                <ProcessChoseCSVData getChose={getChose} setNoteCSVData={setNoteCSVData} setGameStarPosition={setGameStarPosition} />
+                <ProcessChoseCSVData getChose={getChose} setNoteCSVData={setNoteCSVData} setGameStarPosition={setGameStarPosition} getOffset={getOffset} getSpeed={getSpeed} />
                 <ShowChoseSong getChose={getChose} setStatus={setStatus} />
                 <ShowChoseSongData getChose={getChose} />
               </group>
@@ -134,12 +134,12 @@ function App() {
               <group key="game-start-scene">
                   <BackImg radius={3.93} getChose={getChose} />
                   <Box/>
-                  <GameStar getGameStarPosition={getGameStarPosition} getUseMouse={getUseMouse} setStop={setStop} setStatus={setStatus}/>
+                  <GameStar getGameStarPosition={getGameStarPosition} setStop={setStop} setStatus={setStatus}/>
             </group>
             )}
 
             {(getStop == true && getStatus === 3) && (
-              <ShowStop setStatus={setStatus} setStop={setStop} getUseMouse={getUseMouse} getChose={getChose} getStatus={getStatus}/>
+              <ShowStop setStatus={setStatus} setStop={setStop}  getChose={getChose} getStatus={getStatus}/>
             )}
 
             {(getStatus === 3) && (
@@ -147,15 +147,14 @@ function App() {
                   <ambientLight intensity={2} />
                   <BackImg radius={3.93} getChose={getChose} />
                   
-                  <Notes.LogicOfNotes  onlyNotes={onlyNotes} getUseMouse={getUseMouse}  />
-                  <Notes.LogicOfDarg  onlyDrag={onlyDrag} getUseMouse={getUseMouse} />
-                  <Notes.LogicOfRotate   onlyRotate={onlyRotate} getUseMouse={getUseMouse} />
+                  <Notes.LogicOfNotes  onlyNotes={onlyNotes}   />
+                  <Notes.LogicOfDarg  onlyDrag={onlyDrag}  />
+                  <Notes.LogicOfRotate   onlyRotate={onlyRotate}  />
 
                   <Box  />
                   <JudgeTextComponent />
                   <CommboTextComponent />
                   <PuaseButtom getStop={getStop} setStop={setStop} />
-                  <GameMusicLogic gameAudioRef={gameAudioRef} getChose={getChose} getStop={getStop} getStatus={getStatus} />
             </group>
           )}
 
@@ -175,12 +174,11 @@ function App() {
 
       {/* 音樂撥放(HTML 元件) */}
       <MenuMusicComponent getTouch={getTouch} getStatus={getStatus} />
-      <GameMusicPlay audioRef={gameAudioRef} audioSrc={getChose?.mp3} getStop={getStop} setStatus={setStatus} getStatus={getStatus} setStop={setStop} />
 
 
       { /* fix ===================================================================================================================================================*/}
       <div className="sideBarLayer">
-        <SideBar setUseMouse={setUseMouse} setRotateCanva={setRotateCanva}/>
+        <SideBar setRotateCanva={setRotateCanva} setOffset={setOffset} getOffset={getOffset} getSpeed={getSpeed} setSpeed={setSpeed} />
       </div>
 
     </>

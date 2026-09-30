@@ -1,12 +1,12 @@
 //===============================================================================
-import hitSoundUrl from './assets/hit.wav'; // 本地引入
+import hitSound from './assets/hit.wav'; // 本地引入
 
 // 1. 全域單例 AudioContext 與音效快取
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 let hitBuffer = null;
 
 // 2. 專案初始化時立即發送請求並預先「解碼」至記憶體中
-fetch(hitSoundUrl)
+fetch(hitSound)
   .then((res) => res.arrayBuffer())
   .then((arrayBuffer) => audioCtx.decodeAudioData(arrayBuffer))
   .then((decodedBuffer) => {
@@ -30,20 +30,5 @@ export const PlayHitSound = () => {
 };
 
 
-//===============================================================================
-export function isUseMouseEnabled(getUseMouse , mouseXR , angleR) {
-  let angle;
-
-  if (getUseMouse) {
-    angle = mouseXR;
-  } else if (!getUseMouse) {
-    angle = angleR;
-  } else {
-    console.log("angleR is undefined");
-    angle = 0; // 預設值
-  }
-
-  return angle;
-}
 
 
