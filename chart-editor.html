@@ -1,0 +1,1148 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111512">
+  <title>REMINATOR / Chart Studio</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+    :root {
+      color-scheme: dark;
+      --bg: #111512;
+      --panel: #1a201b;
+      --panel-raised: #202821;
+      --line: #303a31;
+      --text: #f1f4ea;
+      --muted: #9ba69a;
+      --lime: #d6fb55;
+      --cyan: #72dfd0;
+      --coral: #ff907b;
+      --mono: 'DM Mono', Consolas, monospace;
+      --sans: 'Space Grotesk', 'Microsoft JhengHei', sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--bg); color: var(--text); font-family: var(--sans); }
+    button, input, select { font: inherit; }
+    button { color: inherit; }
+    .app { min-height: 100vh; }
+    .topbar { height: 66px; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; border-bottom: 1px solid var(--line); background: #151a16; }
+    .brand { display: flex; align-items: center; gap: 12px; font-weight: 700; letter-spacing: .02em; }
+    .brand-mark { width: 28px; height: 28px; display: grid; place-items: center; color: #111512; background: var(--lime); clip-path: polygon(50% 0, 100% 100%, 0 100%); font-size: 13px; padding-top: 5px; }
+    .brand-sub { color: var(--muted); font: 11px var(--mono); letter-spacing: .12em; margin-left: 4px; }
+    .top-state { display: flex; align-items: center; gap: 9px; color: var(--muted); font: 11px var(--mono); }
+    .state-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 12px #d6fb5570; }
+    .workspace { max-width: 1680px; margin: 0 auto; padding: 24px 26px 30px; }
+    .page-heading { display: flex; justify-content: space-between; align-items: end; gap: 20px; margin-bottom: 20px; }
+    .eyebrow { margin: 0 0 7px; color: var(--lime); font: 10px var(--mono); letter-spacing: .15em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: 26px; line-height: 1.1; font-weight: 600; }
+    .heading-note { color: var(--muted); font: 11px var(--mono); }
+    .layout { display: grid; grid-template-columns: 270px minmax(400px, 1fr) 320px; gap: 14px; align-items: stretch; }
+    .panel { min-width: 0; border: 1px solid var(--line); background: var(--panel); }
+    .panel-head { min-height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 1px solid var(--line); }
+    .panel-title { margin: 0; color: #dce4d7; font: 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .section { padding: 16px; border-bottom: 1px solid var(--line); }
+    .section:last-child { border-bottom: 0; }
+    .field-label { display: block; margin-bottom: 7px; color: var(--muted); font: 10px var(--mono); letter-spacing: .04em; }
+    .control { width: 100%; min-height: 38px; padding: 8px 10px; color: var(--text); background: #121713; border: 1px solid #39453a; border-radius: 3px; outline: none; }
+    .control:focus { border-color: var(--lime); box-shadow: 0 0 0 2px #d6fb5520; }
+    .control[type="number"] { font-family: var(--mono); }
+    .field + .field { margin-top: 14px; }
+    .file-button, .button { min-height: 38px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 12px; border: 1px solid #465347; border-radius: 3px; background: #242d25; cursor: pointer; transition: background .15s ease, border-color .15s ease, transform .15s ease; }
+    .button:hover, .file-button:hover { background: #303b31; border-color: #73836f; }
+    .button:active, .file-button:active { transform: translateY(1px); }
+    .button.primary { color: #151a11; background: var(--lime); border-color: var(--lime); font-weight: 700; }
+    .button.primary:hover { background: #e2ff84; }
+    .button.quiet { background: transparent; }
+    .button.danger { color: var(--coral); border-color: #69463f; background: #2a211f; }
+    .button.small { min-height: 30px; padding: 0 9px; font-size: 11px; }
+    .button.icon { width: 32px; min-width: 32px; padding: 0; }
+    .button:disabled { opacity: .42; cursor: not-allowed; }
+    .file-button { width: 100%; margin-top: 10px; font-size: 12px; }
+    #audio-file, #csv-file { display: none; }
+    .track-summary { display: flex; align-items: center; gap: 11px; min-height: 52px; margin-top: 12px; padding: 9px; background: #131914; border: 1px solid #303a31; }
+    .track-art { width: 34px; height: 34px; flex: 0 0 auto; display: grid; place-items: center; color: var(--lime); background: #28332a; font-size: 17px; }
+    .track-name { overflow: hidden; color: var(--text); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+    .track-meta { margin-top: 3px; color: var(--muted); font: 9px var(--mono); }
+    .inline-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 10px; }
+    .inline-fields > .field { min-width: 0; margin-top: 0; }
+    .helper { color: var(--muted); font-size: 10px; line-height: 1.55; }
+    .transport { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    .play-button { width: 42px; height: 42px; flex: 0 0 auto; display: grid; place-items: center; color: #12160e; background: var(--lime); border: 0; border-radius: 50%; cursor: pointer; font-size: 16px; }
+    .play-button:hover { background: #e2ff84; }
+    .time-readout { min-width: 93px; font: 12px var(--mono); }
+    .time-readout span { color: var(--muted); }
+    .seek-wrap { flex: 1; min-width: 30px; }
+    input[type="range"] { width: 100%; accent-color: var(--lime); cursor: pointer; }
+    .transport-end { color: var(--muted); font: 10px var(--mono); white-space: nowrap; }
+    .tool-row { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+    .tool-label { margin-right: 4px; color: var(--muted); font: 10px var(--mono); }
+    .type-button { min-height: 31px; display: inline-flex; align-items: center; gap: 7px; padding: 0 10px; color: #c4cec1; border: 1px solid #3b473c; border-radius: 3px; background: #171d18; cursor: pointer; font: 10px var(--mono); }
+    .type-button.active { color: var(--lime); background: #27301f; border-color: #859c3e; }
+    .type-mark { width: 7px; height: 7px; background: currentColor; border-radius: 50%; }
+    .type-mark.drag { width: 12px; height: 4px; border-radius: 2px; }
+    .type-mark.rotate { width: 8px; height: 8px; border-radius: 1px; transform: rotate(45deg); }
+    .timeline-legend { display: flex; gap: 14px; align-items: center; margin-left: auto; color: var(--muted); font: 9px var(--mono); }
+    .legend-item { display: inline-flex; align-items: center; gap: 5px; }
+    .legend-swatch { width: 7px; height: 7px; display: inline-block; background: var(--lime); border-radius: 50%; }
+    .legend-swatch.drag { width: 12px; height: 4px; background: var(--cyan); border-radius: 2px; }
+    .legend-swatch.rotate { background: var(--coral); border-radius: 1px; transform: rotate(45deg); }
+    .timeline-zoom { display: flex; align-items: center; gap: 5px; margin-left: auto; color: var(--muted); font: 9px var(--mono); }
+    .timeline-zoom input { width: 82px; }
+    .zoom-readout { min-width: 35px; color: #dce4d7; text-align: right; }
+    .timeline-scroll { overflow: auto; min-height: 300px; max-height: 56vh; background-color: #141a15; background-image: radial-gradient(#ffffff0a .75px, transparent .75px); background-size: 8px 8px; scrollbar-color: #485448 #151a16; }
+    #timeline { display: block; height: 292px; }
+    #timeline { touch-action: none; cursor: crosshair; }
+    .timeline-hint { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 16px; color: var(--muted); border-top: 1px solid var(--line); font-size: 10px; }
+    .timeline-hint strong { color: #dce4d7; font-weight: 500; }
+    .timeline-grid-legend { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+    .grid-key { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+    .grid-line-sample { width: 17px; height: 0; display: inline-block; border-top: 1px dashed #849084; }
+    .grid-line-sample.beat { border-top: 1px solid #72dfd0; }
+    .grid-line-sample.bar { border-top: 2px solid #d6fb55; }
+    .orbit-panel { margin-top: 14px; }
+    .orbit-readout { color: var(--lime); font: 10px var(--mono); }
+    .orbit-header-controls { display: flex; align-items: center; gap: 10px; }
+    .orbit-stage { position: relative; min-height: 340px; display: grid; place-items: center; padding: 18px; overflow: hidden; background: radial-gradient(ellipse at center, #222c23 0, #171d18 58%, #131814 100%); }
+    #orbit-preview { display: block; width: min(100%, 520px); height: auto; aspect-ratio: 1; touch-action: none; cursor: grab; }
+    #orbit-preview:active { cursor: grabbing; }
+    .orbit-play-button { width: 32px; height: 32px; min-width: 32px; display: grid; place-items: center; padding: 0; color: #111610; background: var(--lime); border: 1px solid #f0ffc4; border-radius: 50%; cursor: pointer; font-size: 13px; }
+    .orbit-play-button:hover { background: #e8ff9d; }
+    .orbit-play-button:focus-visible { outline: 2px solid white; outline-offset: 4px; }
+    .orbit-legend { display: flex; justify-content: center; flex-wrap: wrap; gap: 18px; padding: 10px 14px; border-top: 1px solid var(--line); color: var(--muted); font: 9px var(--mono); }
+    .orbit-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+    .orbit-legend-swatch { width: 9px; height: 9px; border-radius: 50%; background: var(--lime); }
+    .orbit-legend-swatch.drag { background: var(--cyan); }
+    .orbit-legend-swatch.rotate-cw { background: #1687ff; }
+    .orbit-legend-swatch.rotate-ccw { background: #ff5c58; }
+    .editor { padding: 15px 16px 16px; border-bottom: 1px solid var(--line); }
+    .editor-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 13px; }
+    .editor-heading strong { font-size: 12px; font-weight: 600; }
+    .edit-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 11px; }
+    .edit-fields > .field { min-width: 0; margin-top: 0; }
+    .edit-fields .field.full { grid-column: 1 / -1; }
+    .direction-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .direction-choice { position: relative; min-height: 56px; display: flex; align-items: center; gap: 9px; padding: 8px 10px; border: 1px solid #39453a; border-radius: 3px; background: #121713; cursor: pointer; }
+    .direction-choice:has(input:checked) { border-color: var(--cyan); background: #1c2a27; box-shadow: inset 0 0 0 1px #72dfd055; }
+    .direction-choice input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+    .direction-choice:focus-within { outline: 2px solid var(--lime); outline-offset: 2px; }
+    .direction-symbol { color: var(--cyan); font-size: 20px; line-height: 1; }
+    .direction-copy { display: grid; gap: 3px; }
+    .direction-copy strong { color: var(--text); font-size: 11px; font-weight: 600; }
+    .direction-copy small { color: var(--muted); font: 9px var(--mono); }
+    .editor-actions { display: flex; gap: 8px; margin-top: 13px; }
+    .editor-actions .button { flex: 1; }
+    .event-list-head { display: flex; justify-content: space-between; align-items: center; padding: 13px 15px 9px; color: var(--muted); font: 10px var(--mono); }
+    .event-count { color: var(--lime); }
+    .event-list { max-height: 390px; overflow: auto; }
+    .event-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 8px; align-items: center; min-height: 51px; padding: 7px 11px; border-top: 1px solid #2a332b; cursor: pointer; }
+    .event-row:hover, .event-row.selected { background: #252e26; }
+    .event-icon { width: 18px; height: 18px; display: grid; place-items: center; color: var(--lime); font-size: 10px; }
+    .event-icon.drag { color: var(--cyan); }
+    .event-icon.rotate { color: var(--coral); }
+    .event-main { overflow: hidden; }
+    .event-title { overflow: hidden; color: #e5eadf; font: 10px var(--mono); text-overflow: ellipsis; white-space: nowrap; }
+    .event-sub { margin-top: 4px; overflow: hidden; color: var(--muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+    .row-actions { display: flex; gap: 4px; }
+    .row-actions .button { width: 27px; min-width: 27px; min-height: 27px; }
+    .empty-list { padding: 22px 16px; color: var(--muted); font-size: 11px; line-height: 1.6; text-align: center; }
+    .footer-note { display: flex; justify-content: space-between; gap: 15px; margin-top: 14px; color: #7f8a7e; font: 9px var(--mono); }
+    .toast { position: fixed; right: 22px; bottom: 20px; max-width: min(420px, calc(100vw - 32px)); padding: 12px 15px; color: var(--text); background: #27312a; border: 1px solid #56644e; box-shadow: 0 10px 30px #0008; font-size: 12px; opacity: 0; transform: translateY(8px); pointer-events: none; transition: .2s ease; z-index: 5; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .hidden-audio { display: none; }
+
+    @media (max-width: 1120px) {
+      .layout { grid-template-columns: 240px minmax(350px, 1fr); }
+      .right-panel { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1.15fr; }
+      .right-panel > .panel-head { grid-column: 1 / -1; }
+      .editor { border-right: 1px solid var(--line); border-bottom: 0; }
+      .event-list-wrap { min-width: 0; }
+      .event-list { max-height: 290px; }
+    }
+    @media (max-width: 700px) {
+      .topbar { height: 56px; padding: 0 15px; }
+      .brand-sub, .top-state { display: none; }
+      .workspace { padding: 19px 12px 24px; }
+      .page-heading { align-items: start; flex-direction: column; gap: 8px; }
+      h1 { font-size: 23px; }
+      .layout { grid-template-columns: 1fr; gap: 11px; }
+      .right-panel { grid-column: auto; display: block; }
+      .right-panel > .panel-head { display: flex; }
+      .editor { border-right: 0; border-bottom: 1px solid var(--line); }
+      .event-list { max-height: 300px; }
+      .timeline-legend { width: 100%; margin: 3px 0 0; }
+      .transport { gap: 9px; padding: 12px; }
+      .time-readout { min-width: 78px; font-size: 10px; }
+      .transport-end { font-size: 9px; }
+      .timeline-hint { align-items: start; flex-direction: column; }
+      .orbit-stage { min-height: 280px; padding: 10px; }
+      .orbit-legend { gap: 10px; }
+      .footer-note { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">R</span><span>REMINATOR <span class="brand-sub">/ CHART STUDIO</span></span></div>
+      <div class="top-state"><span class="state-dot"></span><span id="save-state">LOCAL WORKSPACE</span></div>
+    </header>
+    <main class="workspace">
+      <div class="page-heading">
+        <div><p class="eyebrow">譜面工作台　/　01</p><h1>Chart Studio</h1></div>
+        <div class="heading-note">NOTE · DRAG · ROTATE <span aria-hidden="true">/</span> CSV</div>
+      </div>
+
+      <div class="layout">
+        <aside class="panel">
+          <div class="panel-head"><h2 class="panel-title">音樂與譜面</h2></div>
+          <section class="section">
+            <label class="file-button" for="audio-file"><span aria-hidden="true">＋</span> 選擇音樂檔案</label>
+            <input id="audio-file" type="file" accept="audio/*">
+            <div class="track-summary">
+              <div class="track-art" aria-hidden="true">♫</div>
+              <div style="min-width:0"><div class="track-name" id="track-name">尚未選擇音樂</div><div class="track-meta" id="track-meta">AUDIO SOURCE</div></div>
+            </div>
+          </section>
+          <section class="section">
+            <label class="file-button" for="csv-file"><span aria-hidden="true">↥</span> 匯入既有 CSV 譜面</label>
+            <input id="csv-file" type="file" accept=".csv,text/csv">
+            <p class="helper" style="margin:9px 0 0">沿用遊戲格式：前兩列為偏移毫秒與起始軌道，後續列為音符事件。</p>
+          </section>
+          <section class="section">
+            <div class="inline-fields">
+              <div class="field"><label class="field-label" for="offset">譜面偏移 (ms)</label><input class="control" id="offset" type="number" step="1" value="0"></div>
+              <div class="field"><label class="field-label" for="start-lane">起始軌道</label><input class="control" id="start-lane" type="number" min="0" max="31" step="1" value="0"></div>
+            </div>
+            <div class="inline-fields" style="margin-top:14px">
+              <div class="field"><label class="field-label" for="bpm">BPM</label><input class="control" id="bpm" type="number" min="1" max="400" step="1" value="120"></div>
+              <div class="field"><label class="field-label" for="snap">音符分割</label><select class="control" id="snap"><option value="0">自由編輯</option><option value="1">全音符　1/1</option><option value="2">二分音符　1/2</option><option value="4">四分音符　1/4</option><option value="8" selected>八分音符　1/8</option><option value="16">十六分音符　1/16</option><option value="32">三十二分音符　1/32</option></select></div>
+            </div>
+            <div class="field" style="margin-top:14px"><label class="field-label" for="time-signature">拍號</label><select class="control" id="time-signature"><option value="4/4" selected>4/4</option><option value="3/4">3/4</option><option value="2/4">2/4</option><option value="6/8">6/8</option><option value="5/4">5/4</option><option value="7/8">7/8</option></select></div>
+          </section>
+          <section class="section">
+            <button class="button primary" id="export-button" style="width:100%">↓　匯出遊戲 CSV</button>
+          </section>
+        </aside>
+
+        <section class="panel center-panel">
+          <div class="panel-head"><h2 class="panel-title">時間軸</h2><span class="heading-note" id="duration-label">00:00</span></div>
+          <div class="transport">
+            <button class="play-button" id="play-button" aria-label="播放" title="播放 / 暫停">▶</button>
+            <div class="time-readout"><span id="current-time">00:00.000</span></div>
+            <div class="seek-wrap"><input id="seek" type="range" min="0" max="1000" value="0" aria-label="音樂播放位置"></div>
+            <div class="transport-end" id="total-time">00:00</div>
+            <label class="helper" style="display:flex;align-items:center;gap:6px;white-space:nowrap"><input id="hit-preview" type="checkbox" checked> HIT</label>
+          </div>
+          <div class="tool-row">
+            <span class="tool-label">新增類型</span>
+            <button class="type-button active" data-type="note"><span class="type-mark"></span>NOTE</button>
+            <button class="type-button" data-type="drag"><span class="type-mark drag"></span>DRAG</button>
+            <button class="type-button" data-type="rotate"><span class="type-mark rotate"></span>ROTATE</button>
+            <div class="timeline-legend"><span class="legend-item"><i class="legend-swatch"></i>NOTE</span><span class="legend-item"><i class="legend-swatch drag"></i>DRAG</span><span class="legend-item"><i class="legend-swatch rotate"></i>ROTATE</span></div>
+            <div class="timeline-zoom" aria-label="時間軸縮放">
+              <button class="button small icon" id="zoom-out" type="button" title="縮小時間軸" aria-label="縮小時間軸">−</button>
+              <input id="zoom" type="range" min="0.5" max="5" step="0.1" value="1" aria-label="時間軸縮放比例">
+              <button class="button small icon" id="zoom-in" type="button" title="放大時間軸" aria-label="放大時間軸">＋</button>
+              <output class="zoom-readout" id="zoom-readout">100%</output>
+            </div>
+          </div>
+          <div class="timeline-scroll" id="timeline-scroll"><canvas id="timeline" aria-label="譜面事件時間軸"></canvas></div>
+          <div class="timeline-hint"><span><strong>直接編輯：</strong>NOTE 點軌道新增；拖曳事件可改時間與軌道。DRAG 在軌道區按住並拉出起訖；ROTATE 點下方區域新增。</span><span class="timeline-grid-legend"><span class="grid-key"><i class="grid-line-sample"></i>時間</span><span class="grid-key"><i class="grid-line-sample beat"></i>拍</span><span class="grid-key"><i class="grid-line-sample bar"></i>小節</span><span>軌道 0–31</span></span></div>
+          <audio id="audio" class="hidden-audio" preload="metadata"></audio>
+        </section>
+
+        <aside class="panel right-panel">
+          <div class="panel-head"><h2 class="panel-title">事件編輯器</h2><span class="heading-note" id="editor-mode">NEW</span></div>
+          <form class="editor" id="event-form">
+            <div class="editor-heading"><strong id="form-title">新增 NOTE</strong><button class="button small quiet" id="cancel-edit" type="button" hidden>取消編輯</button></div>
+            <div class="edit-fields" id="edit-fields"></div>
+            <div class="editor-actions"><button class="button primary" type="submit" id="save-event">加入事件</button></div>
+          </form>
+          <div class="event-list-wrap">
+            <div class="event-list-head"><span>已編排事件</span><span class="event-count" id="event-count">0 EVENTS</span></div>
+            <div class="event-list" id="event-list"></div>
+          </div>
+        </aside>
+      </div>
+      <section class="panel orbit-panel">
+        <div class="panel-head">
+          <h2 class="panel-title">圓形遊玩預覽</h2>
+          <div class="orbit-header-controls"><span class="orbit-readout" id="orbit-readout">SYNC · 00:00.000</span><button class="orbit-play-button" id="orbit-play-button" type="button" title="播放 / 暫停" aria-label="播放預覽">▶</button></div>
+        </div>
+        <div class="orbit-stage"><canvas id="orbit-preview" aria-label="沿圓周拖曳可前進或倒轉時間"></canvas></div>
+        <div class="orbit-legend">
+          <span class="orbit-legend-item">拖曳圓周：↻ 前進　↺ 倒轉</span>
+          <span class="orbit-legend-item"><i class="orbit-legend-swatch"></i>NOTE</span>
+          <span class="orbit-legend-item"><i class="orbit-legend-swatch drag"></i>DRAG</span>
+          <span class="orbit-legend-item"><i class="orbit-legend-swatch rotate-cw"></i>ROTATE ↻</span>
+          <span class="orbit-legend-item"><i class="orbit-legend-swatch rotate-ccw"></i>ROTATE ↺</span>
+        </div>
+      </section>
+      <div class="footer-note"><span>REMINATOR VR　/　CHART DATA EXPORT</span><span>CSV 欄位相容現有遊戲載入器</span></div>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const audio = document.querySelector('#audio');
+    const canvas = document.querySelector('#timeline');
+    const context = canvas.getContext('2d');
+    const orbitCanvas = document.querySelector('#orbit-preview');
+    const orbitContext = orbitCanvas.getContext('2d');
+    const chart = { offset: 0, startLane: 0, events: [] };
+    const state = { currentTime: 0, duration: 0, selectedType: 'note', editingId: null, selectedId: null, title: '', objectUrl: null };
+    let timelineZoom = 1;
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    let previewAudioContext = null;
+    let previewHitBuffer = null;
+    let previewHitLoad = null;
+    let previewFrame = 0;
+    let previewLastMs = 0;
+    let orbitScrub = null;
+    const typeNames = { note: 'NOTE', drag: 'DRAG', rotate: 'ROTATE' };
+    const typeColors = { note: '#d6fb55', drag: '#72dfd0', rotate: '#ff907b' };
+    const PREVIEW_START_RADIUS = 4.9;
+    const PREVIEW_END_RADIUS = 1.25;
+    const PREVIEW_NOTE_SPEED = 0.05;
+    const PREVIEW_DRAG_DENSITY = 10;
+    const PREVIEW_ARC_LENGTH = Math.PI / 16 + 0.4;
+    let toastTimer;
+    let drawFrame = 0;
+    let orbitFrame = 0;
+
+    function showToast(message) {
+      const toast = document.querySelector('#toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 2800);
+    }
+
+    function timeLabel(milliseconds, decimals = false) {
+      const safe = Math.max(0, Number(milliseconds) || 0);
+      const minutes = Math.floor(safe / 60000).toString().padStart(2, '0');
+      const seconds = Math.floor((safe % 60000) / 1000).toString().padStart(2, '0');
+      const millis = Math.floor(safe % 1000).toString().padStart(3, '0');
+      return decimals ? `${minutes}:${seconds}.${millis}` : `${minutes}:${seconds}`;
+    }
+
+    function eventTime(event) {
+      return event.type === 'drag' ? event.startTime : event.time;
+    }
+
+    function sortedEvents() {
+      return [...chart.events].sort((a, b) => eventTime(a) - eventTime(b));
+    }
+
+    function loadPreviewHitSound() {
+      if (!AudioContextClass) return Promise.reject(new Error('Web Audio is unavailable.'));
+      if (!previewAudioContext) previewAudioContext = new AudioContextClass();
+      if (!previewHitLoad) {
+        previewHitLoad = fetch('./reminator_VR/src/assets/hit.wav')
+          .then((response) => {
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.arrayBuffer();
+          })
+          .then((data) => previewAudioContext.decodeAudioData(data))
+          .then((buffer) => { previewHitBuffer = buffer; });
+      }
+      return previewHitLoad;
+    }
+
+    function playPreviewHit() {
+      if (!document.querySelector('#hit-preview').checked || !previewHitBuffer || !previewAudioContext) return;
+      if (previewAudioContext.state === 'suspended') previewAudioContext.resume();
+      const source = previewAudioContext.createBufferSource();
+      source.buffer = previewHitBuffer;
+      source.connect(previewAudioContext.destination);
+      source.start();
+    }
+
+    function previewHitTimes() {
+      return chart.events.flatMap((item) => {
+        if (item.type === 'drag') {
+          return Array.from({ length: 11 }, (_, index) => item.startTime + (item.endTime - item.startTime) * index / 10);
+        }
+        return [item.time];
+      }).sort((a, b) => a - b);
+    }
+
+    function runPreviewFrame() {
+      if (audio.paused) { previewFrame = 0; return; }
+      const currentMs = audio.currentTime * 1000;
+      if (currentMs >= previewLastMs) {
+        for (const hitTime of previewHitTimes()) {
+          if (hitTime > previewLastMs && hitTime <= currentMs) playPreviewHit();
+        }
+      }
+      previewLastMs = currentMs;
+      state.currentTime = currentMs;
+      syncTransport();
+      previewFrame = requestAnimationFrame(runPreviewFrame);
+    }
+
+    function parseCsv(text) {
+      const rows = [];
+      let row = [];
+      let cell = '';
+      let quoted = false;
+      const source = text.replace(/^\uFEFF/, '');
+      for (let index = 0; index < source.length; index += 1) {
+        const character = source[index];
+        if (quoted) {
+          if (character === '"' && source[index + 1] === '"') { cell += '"'; index += 1; }
+          else if (character === '"') quoted = false;
+          else cell += character;
+        } else if (character === '"') quoted = true;
+        else if (character === ',') { row.push(cell); cell = ''; }
+        else if (character === '\n' || character === '\r') {
+          if (character === '\r' && source[index + 1] === '\n') index += 1;
+          row.push(cell);
+          if (row.some((value) => value.trim() !== '')) rows.push(row);
+          row = [];
+          cell = '';
+        } else cell += character;
+      }
+      row.push(cell);
+      if (row.some((value) => value.trim() !== '')) rows.push(row);
+      return rows;
+    }
+
+    function loadCsvText(text, sourceName = 'CSV') {
+      const rows = parseCsv(text);
+      if (rows.length < 2) throw new Error('CSV 至少要有偏移量與起始軌道兩列。');
+      const offset = Number(rows[0][0]);
+      const startLane = Number(rows[1][0]);
+      if (!Number.isFinite(offset) || !Number.isFinite(startLane)) throw new Error('CSV 前兩列必須是有效數字。');
+      const events = [];
+      for (const row of rows.slice(2)) {
+        const type = row[0]?.trim();
+        if (type === 'note' && Number.isFinite(Number(row[1])) && Number.isFinite(Number(row[2]))) {
+          events.push({ id: crypto.randomUUID(), type, time: Number(row[1]) + offset, lane: Number(row[2]) });
+        } else if (type === 'drag' && row.slice(1, 6).every((value) => Number.isFinite(Number(value)))) {
+          events.push({ id: crypto.randomUUID(), type, startTime: Number(row[1]) + offset, endTime: Number(row[2]) + offset, startLane: Number(row[3]), endLane: Number(row[4]), direction: Number(row[5]) });
+        } else if (type === 'rotate' && Number.isFinite(Number(row[1])) && Number.isFinite(Number(row[2]))) {
+          events.push({ id: crypto.randomUUID(), type, time: Number(row[1]) + offset, direction: Number(row[2]) });
+        } else throw new Error(`無法辨識的譜面資料列：${row.join(', ')}`);
+      }
+      chart.offset = offset;
+      chart.startLane = Math.min(31, Math.max(0, Math.round(startLane)));
+      chart.events = events;
+      document.querySelector('#offset').value = offset;
+      document.querySelector('#start-lane').value = chart.startLane;
+      state.selectedId = null;
+      state.editingId = null;
+      renderAll();
+      markChanged();
+      showToast(`已匯入 ${events.length} 個事件：${sourceName}`);
+    }
+
+    function buildCsv() {
+      const output = [[Math.round(chart.offset)], [chart.startLane]];
+      for (const event of sortedEvents()) {
+        if (event.type === 'note') output.push(['note', Math.round(event.time - chart.offset), event.lane]);
+        else if (event.type === 'drag') output.push(['drag', Math.round(event.startTime - chart.offset), Math.round(event.endTime - chart.offset), event.startLane, event.endLane, event.direction]);
+        else output.push(['rotate', Math.round(event.time - chart.offset), event.direction]);
+      }
+      return output.map((row) => row.map((value) => {
+        const text = String(value);
+        return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+      }).join(',')).join('\r\n') + '\r\n';
+    }
+
+    function safeFilename(value) {
+      return (value || 'reminator-chart').replace(/[\\/:*?"<>|]/g, '_').trim() || 'reminator-chart';
+    }
+
+    function exportCsv() {
+      const blob = new Blob(['\uFEFF', buildCsv()], { type: 'text/csv;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${safeFilename(state.title)}.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      document.querySelector('#save-state').textContent = 'CSV EXPORTED';
+      showToast('譜面 CSV 已下載，可直接放入遊戲歌曲資料。');
+    }
+
+    function markChanged() {
+      document.querySelector('#save-state').textContent = 'UNSAVED CHANGES';
+    }
+
+    function setType(type) {
+      state.selectedType = type;
+      document.querySelectorAll('.type-button').forEach((button) => button.classList.toggle('active', button.dataset.type === type));
+      if (!state.editingId) renderForm(type);
+    }
+
+    function fieldMarkup(label, name, value, options = {}) {
+      const full = options.full ? ' full' : '';
+      const control = options.choices
+        ? `<select class="control" name="${name}">${options.choices.map((choice) => `<option value="${choice.value}" ${String(value) === String(choice.value) ? 'selected' : ''}>${choice.label}</option>`).join('')}</select>`
+        : `<input class="control" name="${name}" type="number" value="${value}" step="${options.step ?? 1}" ${options.min !== undefined ? `min="${options.min}"` : ''} ${options.max !== undefined ? `max="${options.max}"` : ''} required>`;
+      return `<div class="field${full}"><label class="field-label">${label}</label>${control}</div>`;
+    }
+
+    function dragDirectionFieldMarkup(direction) {
+      return `<div class="field full"><span class="field-label">移動方向</span><div class="direction-picker" role="radiogroup" aria-label="DRAG 移動方向">
+        <label class="direction-choice"><input type="radio" name="direction" value="-1" ${direction === -1 ? 'checked' : ''}><span class="direction-symbol" aria-hidden="true">↻</span><span class="direction-copy"><strong>順時針</strong><small>軌道號碼遞減</small></span></label>
+        <label class="direction-choice"><input type="radio" name="direction" value="1" ${direction !== -1 ? 'checked' : ''}><span class="direction-symbol" aria-hidden="true">↺</span><span class="direction-copy"><strong>逆時針</strong><small>軌道號碼遞增</small></span></label>
+      </div></div>`;
+    }
+
+    function renderForm(type, event = null) {
+      const now = snappedTime(state.currentTime);
+      const fields = document.querySelector('#edit-fields');
+      document.querySelector('#form-title').textContent = `${event ? '編輯' : '新增'} ${typeNames[type]}`;
+      document.querySelector('#editor-mode').textContent = event ? 'EDIT' : 'NEW';
+      document.querySelector('#save-event').textContent = event ? '儲存變更' : '加入事件';
+      document.querySelector('#cancel-edit').hidden = !event;
+      if (type === 'note') {
+        fields.innerHTML = fieldMarkup('時間 (ms)', 'time', event?.time ?? now) + fieldMarkup('軌道 (0–31)', 'lane', event?.lane ?? 0, { min: 0, max: 31 });
+      } else if (type === 'drag') {
+        fields.innerHTML = fieldMarkup('開始時間 (ms)', 'startTime', event?.startTime ?? now) + fieldMarkup('結束時間 (ms)', 'endTime', event?.endTime ?? now + beatLength()) + fieldMarkup('起始軌道', 'startLane', event?.startLane ?? 0, { min: 0, max: 31 }) + fieldMarkup('結束軌道', 'endLane', event?.endLane ?? 8, { min: 0, max: 31 }) + dragDirectionFieldMarkup(event?.direction ?? 1);
+      } else {
+        fields.innerHTML = fieldMarkup('時間 (ms)', 'time', event?.time ?? now) + fieldMarkup('旋轉方向', 'direction', event?.direction ?? 1, { choices: [{ value: 1, label: '順時針' }, { value: 2, label: '逆時針' }], full: true });
+      }
+    }
+
+    function beatLength() {
+      const bpm = Math.max(1, Number(document.querySelector('#bpm').value) || 120);
+      return 60000 / bpm;
+    }
+
+    function meterInfo() {
+      const [beats, denominator] = document.querySelector('#time-signature').value.split('/').map(Number);
+      const beatMs = beatLength() * 4 / denominator;
+      return { beats, denominator, beatMs, barMs: beats * beatMs };
+    }
+
+    function snappedTime(time) {
+      const division = Number(document.querySelector('#snap').value);
+      if (!division) return Math.round(time);
+      const step = beatLength() * 4 / division;
+      return Math.max(0, Math.round(time / step) * step);
+    }
+
+    function timeStep() {
+      const division = Number(document.querySelector('#snap').value);
+      return division ? beatLength() * 4 / division : 1;
+    }
+
+    function formToEvent(formData, type, id) {
+      const value = (key) => Number(formData.get(key));
+      const event = { id: id || crypto.randomUUID(), type };
+      if (type === 'note') Object.assign(event, { time: value('time'), lane: value('lane') });
+      if (type === 'drag') Object.assign(event, { startTime: value('startTime'), endTime: value('endTime'), startLane: value('startLane'), endLane: value('endLane'), direction: value('direction') });
+      if (type === 'rotate') Object.assign(event, { time: value('time'), direction: value('direction') });
+      const times = type === 'drag' ? [event.startTime, event.endTime] : [event.time];
+      if (times.some((time) => !Number.isFinite(time) || time < 0)) throw new Error('時間必須是 0 以上的有效數字。');
+      if (type === 'drag' && event.endTime <= event.startTime) throw new Error('DRAG 結束時間必須晚於開始時間。');
+      const lanes = type === 'note' ? [event.lane] : type === 'drag' ? [event.startLane, event.endLane] : [];
+      if (lanes.some((lane) => !Number.isInteger(lane) || lane < 0 || lane > 31)) throw new Error('軌道請輸入 0 到 31 的整數。');
+      return event;
+    }
+
+    document.querySelector('#event-form').addEventListener('submit', (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const wasEditing = Boolean(state.editingId);
+      const eventType = wasEditing ? chart.events.find((item) => item.id === state.editingId)?.type : state.selectedType;
+      try {
+        const updated = formToEvent(new FormData(form), eventType, state.editingId);
+        if (state.editingId) chart.events = chart.events.map((item) => item.id === state.editingId ? updated : item);
+        else chart.events.push(updated);
+        state.selectedId = updated.id;
+        state.editingId = null;
+        renderAll();
+        markChanged();
+        showToast(wasEditing ? '事件已更新。' : '事件已加入譜面。');
+      } catch (error) { showToast(error.message); }
+    });
+
+    function renderList() {
+      const list = document.querySelector('#event-list');
+      const events = sortedEvents();
+      document.querySelector('#event-count').textContent = `${events.length} EVENTS`;
+      list.replaceChildren();
+      if (!events.length) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-list';
+        empty.textContent = '譜面目前是空的。選擇事件類型，在播放位置加入第一個音符。';
+        list.append(empty);
+        return;
+      }
+      for (const item of events) {
+        const row = document.createElement('div');
+        row.className = `event-row${state.selectedId === item.id ? ' selected' : ''}`;
+        row.dataset.id = item.id;
+        const icon = document.createElement('span');
+        icon.className = `event-icon ${item.type}`;
+        icon.textContent = item.type === 'note' ? '●' : item.type === 'drag' ? '━' : '◆';
+        const main = document.createElement('div');
+        main.className = 'event-main';
+        const title = document.createElement('div');
+        title.className = 'event-title';
+        const detail = document.createElement('div');
+        detail.className = 'event-sub';
+        title.textContent = item.type === 'drag' ? `${timeLabel(item.startTime, true)} → ${timeLabel(item.endTime, true)}` : timeLabel(item.time, true);
+        detail.textContent = item.type === 'note' ? `軌道 ${item.lane}` : item.type === 'drag' ? `${item.direction === -1 ? '↻ 順時針' : '↺ 逆時針'} · 軌道 ${item.startLane} → ${item.endLane}` : (item.direction === 1 ? '順時針' : '逆時針');
+        main.append(title, detail);
+        const actions = document.createElement('div');
+        actions.className = 'row-actions';
+        const edit = document.createElement('button');
+        edit.className = 'button small icon'; edit.type = 'button'; edit.dataset.action = 'edit'; edit.title = '編輯事件'; edit.setAttribute('aria-label', '編輯事件'); edit.textContent = '✎';
+        const remove = document.createElement('button');
+        remove.className = 'button small icon danger'; remove.type = 'button'; remove.dataset.action = 'delete'; remove.title = '刪除事件'; remove.setAttribute('aria-label', '刪除事件'); remove.textContent = '×';
+        actions.append(edit, remove);
+        row.append(icon, main, actions);
+        list.append(row);
+      }
+    }
+
+    function renderAll() { renderList(); scheduleDraw(); scheduleOrbitDraw(); }
+
+    document.querySelector('#event-list').addEventListener('click', (click) => {
+      const row = click.target.closest('.event-row');
+      if (!row) return;
+      const item = chart.events.find((event) => event.id === row.dataset.id);
+      if (!item) return;
+      const action = click.target.closest('[data-action]')?.dataset.action;
+      if (action === 'delete') {
+        chart.events = chart.events.filter((event) => event.id !== item.id);
+        if (state.selectedId === item.id) state.selectedId = null;
+        if (state.editingId === item.id) state.editingId = null;
+        renderAll(); markChanged(); showToast('事件已刪除。');
+      } else if (action === 'edit') {
+        state.editingId = item.id; state.selectedId = item.id;
+        setType(item.type); renderForm(item.type, item); renderAll();
+      } else {
+        state.selectedId = item.id; state.currentTime = eventTime(item);
+        if (Number.isFinite(audio.duration)) audio.currentTime = state.currentTime / 1000;
+        previewLastMs = state.currentTime;
+        syncTransport(); renderAll();
+      }
+    });
+
+    document.querySelector('#cancel-edit').addEventListener('click', () => {
+      state.editingId = null; renderForm(state.selectedType); renderAll();
+    });
+
+    document.querySelectorAll('.type-button').forEach((button) => button.addEventListener('click', () => setType(button.dataset.type)));
+    document.querySelector('#export-button').addEventListener('click', exportCsv);
+
+    document.querySelector('#offset').addEventListener('change', (event) => {
+      chart.offset = Number(event.target.value) || 0; markChanged();
+    });
+    document.querySelector('#start-lane').addEventListener('change', (event) => {
+      chart.startLane = Math.min(31, Math.max(0, Math.round(Number(event.target.value) || 0)));
+      event.target.value = chart.startLane; markChanged();
+    });
+    document.querySelector('#bpm').addEventListener('change', () => {
+      if (!state.editingId) renderForm(state.selectedType);
+      scheduleDraw();
+    });
+    document.querySelector('#snap').addEventListener('change', scheduleDraw);
+    document.querySelector('#time-signature').addEventListener('change', scheduleDraw);
+
+    document.querySelector('#audio-file').addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      if (state.objectUrl) URL.revokeObjectURL(state.objectUrl);
+      state.objectUrl = URL.createObjectURL(file);
+      state.title = file.name.replace(/\.[^.]+$/, '');
+      setTrack(state.objectUrl, state.title, 'LOCAL AUDIO');
+    });
+
+    document.querySelector('#csv-file').addEventListener('change', async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      try { loadCsvText(await file.text(), file.name); }
+      catch (error) { showToast(error.message); }
+      event.target.value = '';
+    });
+
+    function setTrack(source, title, meta) {
+      audio.src = source;
+      state.title = title;
+      document.querySelector('#track-name').textContent = title;
+      document.querySelector('#track-meta').textContent = meta;
+      state.currentTime = 0;
+      audio.load();
+      syncTransport();
+    }
+
+    audio.addEventListener('loadedmetadata', () => {
+      state.duration = Number.isFinite(audio.duration) ? audio.duration * 1000 : 0;
+      document.querySelector('#duration-label').textContent = timeLabel(state.duration);
+      document.querySelector('#total-time').textContent = timeLabel(state.duration);
+      document.querySelector('#seek').max = Math.max(1, state.duration);
+      scheduleDraw();
+      scheduleOrbitDraw();
+    });
+    audio.addEventListener('timeupdate', syncTransport);
+    audio.addEventListener('play', () => {
+      document.querySelector('#play-button').textContent = 'Ⅱ';
+      document.querySelector('#play-button').setAttribute('aria-label', '暫停');
+      document.querySelector('#orbit-play-button').textContent = 'Ⅱ';
+      document.querySelector('#orbit-play-button').setAttribute('aria-label', '暫停預覽');
+      previewLastMs = Math.max(-1, audio.currentTime * 1000 - 1);
+      if (!previewFrame) previewFrame = requestAnimationFrame(runPreviewFrame);
+    });
+    audio.addEventListener('pause', () => {
+      document.querySelector('#play-button').textContent = '▶';
+      document.querySelector('#play-button').setAttribute('aria-label', '播放');
+      document.querySelector('#orbit-play-button').textContent = '▶';
+      document.querySelector('#orbit-play-button').setAttribute('aria-label', '播放預覽');
+      if (previewFrame) cancelAnimationFrame(previewFrame);
+      previewFrame = 0;
+    });
+    audio.addEventListener('error', () => showToast('音樂載入失敗，請改選本機音檔。'));
+
+    function syncTransport() {
+      if (!audio.paused && Number.isFinite(audio.currentTime)) state.currentTime = audio.currentTime * 1000;
+      document.querySelector('#current-time').textContent = timeLabel(state.currentTime, true);
+      document.querySelector('#seek').value = Math.min(state.duration || 1, state.currentTime);
+      scheduleDraw();
+      scheduleOrbitDraw();
+    }
+
+    async function togglePlayback() {
+      if (!audio.src) { showToast('請先選擇歌曲或本機音樂。'); return; }
+      if (audio.paused) {
+        try {
+          if (document.querySelector('#hit-preview').checked && previewAudioContext?.state === 'suspended') await previewAudioContext.resume();
+          await audio.play();
+        } catch { showToast('無法播放此音訊，請確認檔案或網路連線。'); }
+      } else audio.pause();
+    }
+
+    document.querySelector('#play-button').addEventListener('click', togglePlayback);
+    document.querySelector('#orbit-play-button').addEventListener('click', togglePlayback);
+    document.querySelector('#seek').addEventListener('input', (event) => {
+      state.currentTime = Number(event.target.value);
+      if (Number.isFinite(audio.duration)) audio.currentTime = state.currentTime / 1000;
+      previewLastMs = state.currentTime;
+      syncTransport();
+    });
+
+    const TIME_GUTTER = 48;
+    const LANE_TOP = 43;
+    const LANE_GAP = 7.5;
+    const ROTATE_TOP = 321;
+    const TIMELINE_HEIGHT = 380;
+    let pointerEdit = null;
+
+    function timelineWidth() {
+      const duration = Math.max(state.duration, ...chart.events.map((item) => (item.type === 'drag' ? item.endTime : item.time) + 3000), 60000);
+      return Math.max(document.querySelector('#timeline-scroll').clientWidth, Math.ceil(TIME_GUTTER + duration / 1000 * pixelsPerSecond()));
+    }
+
+    function pixelsPerSecond() { return 90 * timelineZoom; }
+    function timeToX(time) { return TIME_GUTTER + time / 1000 * pixelsPerSecond(); }
+    function laneToY(lane) { return LANE_TOP + (31 - lane) * LANE_GAP; }
+    function clampLane(lane) { return Math.min(31, Math.max(0, Math.round(lane))); }
+
+    function drawTimeline() {
+      drawFrame = 0;
+      const width = timelineWidth();
+      const height = TIMELINE_HEIGHT;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      context.setTransform(dpr, 0, 0, dpr, 0, 0);
+      context.clearRect(0, 0, width, height);
+      context.fillStyle = '#19201a'; context.fillRect(0, 35, width, 270);
+      context.fillStyle = '#171d18'; context.fillRect(0, ROTATE_TOP, width, height - ROTATE_TOP);
+      context.font = '10px "DM Mono", Consolas, monospace';
+      const endMs = (width - TIME_GUTTER) / pixelsPerSecond() * 1000;
+      const majorStep = [1000, 2000, 5000, 10000, 15000, 30000, 60000].find((step) => step * pixelsPerSecond() / 1000 >= 90) || 60000;
+      context.setLineDash([3, 5]);
+      for (let time = 0; time <= endMs; time += majorStep) {
+        const x = Math.round(timeToX(time)) + .5;
+        context.strokeStyle = '#687367'; context.lineWidth = 1;
+        context.beginPath(); context.moveTo(x, 29); context.lineTo(x, height); context.stroke();
+        context.fillStyle = '#94a092'; context.fillText(timeLabel(time), x + 4, 17);
+      }
+      context.setLineDash([]);
+      const gridStep = timeStep();
+      const gridStride = Math.max(1, Math.ceil(endMs / gridStep / 1800));
+      for (let time = 0; time <= endMs; time += gridStep * gridStride) {
+        const x = Math.round(timeToX(time)) + .5;
+        context.strokeStyle = '#253027'; context.lineWidth = 1;
+        context.beginPath(); context.moveTo(x, 35); context.lineTo(x, height); context.stroke();
+      }
+      const meter = meterInfo();
+      const beatStride = Math.max(1, Math.ceil(12 / (meter.beatMs * pixelsPerSecond() / 1000)));
+      for (let beatIndex = 0; beatIndex * meter.beatMs <= endMs; beatIndex += 1) {
+        const isBarLine = beatIndex % meter.beats === 0;
+        if (!isBarLine && beatIndex % beatStride !== 0) continue;
+        const x = Math.round(timeToX(beatIndex * meter.beatMs)) + .5;
+        context.strokeStyle = isBarLine ? '#9ab848' : '#477e74';
+        context.lineWidth = isBarLine ? 2 : 1;
+        context.beginPath(); context.moveTo(x, isBarLine ? 29 : 35); context.lineTo(x, height); context.stroke();
+        if (isBarLine) {
+          context.fillStyle = '#19201a'; context.fillRect(x + 2, 30, 24, 12);
+          context.fillStyle = '#d6fb55'; context.font = '8px "DM Mono", Consolas, monospace';
+          context.fillText(`M${Math.floor(beatIndex / meter.beats) + 1}`, x + 4, 39);
+        }
+      }
+      for (let lane = 31; lane >= 0; lane -= 1) {
+        const y = Math.round(laneToY(lane)) + .5;
+        context.strokeStyle = lane % 4 === 0 ? '#3a463a' : '#29322a';
+        context.beginPath(); context.moveTo(0, y); context.lineTo(width, y); context.stroke();
+        context.fillStyle = lane % 4 === 0 ? '#b1bbaa' : '#788576';
+        context.fillText(String(lane).padStart(2, '0'), 10, y - 2);
+      }
+      context.fillStyle = '#96a28f'; context.font = '9px "DM Mono", Consolas, monospace';
+      context.fillText('NOTE / DRAG　·　32 LANES', 10, 34);
+      context.fillStyle = '#ff907b'; context.fillText('ROTATE', 10, ROTATE_TOP + 17);
+      context.strokeStyle = '#4a5549'; context.beginPath(); context.moveTo(0, ROTATE_TOP); context.lineTo(width, ROTATE_TOP); context.stroke();
+      context.beginPath(); context.moveTo(0, height - 1); context.lineTo(width, height - 1); context.stroke();
+
+      context.font = '9px "DM Mono", Consolas, monospace';
+      for (const item of chart.events) {
+        const color = typeColors[item.type];
+        context.fillStyle = color; context.strokeStyle = color; context.lineWidth = state.selectedId === item.id ? 3 : 2;
+        if (item.type === 'note') {
+          const x = timeToX(item.time); const y = laneToY(item.lane);
+          context.beginPath(); context.arc(x, y, state.selectedId === item.id ? 5 : 3.5, 0, Math.PI * 2); context.fill();
+          if (state.selectedId === item.id) { context.fillStyle = '#141a15'; context.fillText(String(item.lane), x + 8, y + 3); }
+        } else if (item.type === 'drag') {
+          const x1 = timeToX(item.startTime); const x2 = timeToX(item.endTime);
+          const y1 = laneToY(item.startLane); const y2 = laneToY(item.endLane);
+          context.beginPath(); context.moveTo(x1, y1); context.lineTo(x2, y2); context.stroke();
+          context.beginPath(); context.arc(x1, y1, state.selectedId === item.id ? 5 : 3.5, 0, Math.PI * 2); context.arc(x2, y2, state.selectedId === item.id ? 5 : 3.5, 0, Math.PI * 2); context.fill();
+          const middleX = (x1 + x2) / 2; const middleY = (y1 + y2) / 2;
+          context.fillStyle = '#141a15'; context.fillRect(middleX - 8, middleY - 9, 16, 18);
+          context.fillStyle = color; context.font = 'bold 14px "DM Mono", Consolas, monospace';
+          context.fillText(item.direction === -1 ? '↻' : '↺', middleX - 6, middleY + 5);
+        } else {
+          const x = timeToX(item.time); const y = ROTATE_TOP + 31;
+          context.save(); context.translate(x, y); context.rotate(Math.PI / 4); context.fillRect(-5, -5, 10, 10); context.restore();
+          context.fillStyle = '#161b17'; context.fillText(item.direction === 1 ? '↻' : '↺', x - 3, y + 3);
+        }
+      }
+      const cursorX = timeToX(state.currentTime);
+      context.strokeStyle = '#f1f4ea'; context.lineWidth = 1;
+      context.beginPath(); context.moveTo(cursorX, 24); context.lineTo(cursorX, height); context.stroke();
+      context.fillStyle = '#f1f4ea'; context.beginPath(); context.moveTo(cursorX - 4, 24); context.lineTo(cursorX + 4, 24); context.lineTo(cursorX, 30); context.fill();
+    }
+
+    function scheduleDraw() { if (!drawFrame) drawFrame = requestAnimationFrame(drawTimeline); }
+
+    function scheduleOrbitDraw() { if (!orbitFrame) orbitFrame = requestAnimationFrame(drawOrbitPreview); }
+
+    function previewRadiusAt(triggerTime, musicTimeMs) {
+      const travelMs = (PREVIEW_START_RADIUS - PREVIEW_END_RADIUS) / PREVIEW_NOTE_SPEED * (1000 / 60);
+      const elapsedMs = musicTimeMs - (triggerTime - travelMs);
+      if (elapsedMs < 0) return null;
+      const radius = PREVIEW_START_RADIUS - PREVIEW_NOTE_SPEED * (elapsedMs / (1000 / 60));
+      return radius >= PREVIEW_END_RADIUS ? radius : null;
+    }
+
+    function drawOrbitNote(lane, radius, centerX, centerY, scale, color, alpha = 1) {
+      const angle = -(lane * Math.PI / 16);
+      const outerRadius = radius * scale;
+      const innerRadius = (radius - 0.055) * scale;
+      const halfArc = PREVIEW_ARC_LENGTH / 2;
+      orbitContext.globalAlpha = alpha;
+      orbitContext.fillStyle = color;
+      orbitContext.beginPath();
+      orbitContext.arc(centerX, centerY, outerRadius, angle - halfArc, angle + halfArc);
+      orbitContext.arc(centerX, centerY, innerRadius, angle + halfArc, angle - halfArc, true);
+      orbitContext.closePath();
+      orbitContext.fill();
+      orbitContext.globalAlpha = 1;
+    }
+
+    function drawOrbitPreview() {
+      orbitFrame = 0;
+      const size = Math.max(220, orbitCanvas.clientWidth || 360);
+      const pixelRatio = window.devicePixelRatio || 1;
+      orbitCanvas.width = Math.round(size * pixelRatio);
+      orbitCanvas.height = Math.round(size * pixelRatio);
+      orbitContext.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+      orbitContext.clearRect(0, 0, size, size);
+
+      const centerX = size / 2;
+      const centerY = size / 2;
+      const outerRadius = size * 0.43;
+      const scale = outerRadius / PREVIEW_START_RADIUS;
+      const targetRadius = PREVIEW_END_RADIUS * scale;
+      const musicTimeMs = state.currentTime;
+
+      orbitContext.fillStyle = '#151b16';
+      orbitContext.beginPath(); orbitContext.arc(centerX, centerY, outerRadius + 8, 0, Math.PI * 2); orbitContext.fill();
+
+      for (let lane = 0; lane < 32; lane += 1) {
+        const angle = -(lane * Math.PI / 16);
+        const outerX = centerX + Math.cos(angle) * outerRadius;
+        const outerY = centerY + Math.sin(angle) * outerRadius;
+        const innerX = centerX + Math.cos(angle) * (targetRadius + 5);
+        const innerY = centerY + Math.sin(angle) * (targetRadius + 5);
+        orbitContext.strokeStyle = lane % 4 === 0 ? '#52604f' : '#303a31';
+        orbitContext.lineWidth = lane % 4 === 0 ? 1.2 : 0.7;
+        orbitContext.beginPath(); orbitContext.moveTo(innerX, innerY); orbitContext.lineTo(outerX, outerY); orbitContext.stroke();
+        if (lane % 4 === 0) {
+          orbitContext.fillStyle = '#a4b09f';
+          orbitContext.font = '9px "DM Mono", Consolas, monospace';
+          orbitContext.textAlign = 'center';
+          orbitContext.textBaseline = 'middle';
+          orbitContext.fillText(String(lane), centerX + Math.cos(angle) * (outerRadius + 16), centerY + Math.sin(angle) * (outerRadius + 16));
+        }
+      }
+
+      orbitContext.strokeStyle = '#82917e'; orbitContext.lineWidth = 2;
+      orbitContext.beginPath(); orbitContext.arc(centerX, centerY, outerRadius, 0, Math.PI * 2); orbitContext.stroke();
+      orbitContext.strokeStyle = '#bdc9b5'; orbitContext.lineWidth = 2.5;
+      orbitContext.beginPath(); orbitContext.arc(centerX, centerY, targetRadius, 0, Math.PI * 2); orbitContext.stroke();
+      orbitContext.fillStyle = '#a4b09f'; orbitContext.font = '9px "DM Mono", Consolas, monospace';
+      orbitContext.textAlign = 'center'; orbitContext.textBaseline = 'middle';
+      orbitContext.fillText('JUDGE', centerX, centerY - targetRadius - 9);
+
+      for (const item of chart.events) {
+        if (item.type === 'note') {
+          const radius = previewRadiusAt(item.time, musicTimeMs);
+          if (radius !== null) drawOrbitNote(item.lane, radius, centerX, centerY, scale, typeColors.note);
+        } else if (item.type === 'drag') {
+          let landDifference = item.endLane - item.startLane;
+          if (item.direction === 1 && landDifference < 0) landDifference += 32;
+          else if (item.direction === -1 && landDifference > 0) landDifference -= 32;
+          const averageMs = (item.endTime - item.startTime) / PREVIEW_DRAG_DENSITY;
+          const averageLane = landDifference / PREVIEW_DRAG_DENSITY;
+          for (let index = 0; index <= PREVIEW_DRAG_DENSITY; index += 1) {
+            const radius = previewRadiusAt(item.startTime + averageMs * index, musicTimeMs);
+            if (radius === null) continue;
+            drawOrbitNote(item.startLane + averageLane * index, radius, centerX, centerY, scale, typeColors.drag);
+          }
+        } else {
+          const radius = previewRadiusAt(item.time, musicTimeMs);
+          if (radius === null) continue;
+          const rotateColor = item.direction === 1 ? '#1687ff' : '#ff5c58';
+          orbitContext.strokeStyle = rotateColor;
+          orbitContext.lineWidth = Math.max(2, size * 0.009);
+          orbitContext.beginPath(); orbitContext.arc(centerX, centerY, radius * scale, 0, Math.PI * 2); orbitContext.stroke();
+        }
+      }
+
+      orbitContext.fillStyle = '#d6fb55';
+      orbitContext.beginPath(); orbitContext.arc(centerX, centerY, 3, 0, Math.PI * 2); orbitContext.fill();
+      orbitContext.fillStyle = '#e5eadf'; orbitContext.font = '10px "DM Mono", Consolas, monospace';
+      orbitContext.textAlign = 'center'; orbitContext.textBaseline = 'middle';
+      orbitContext.fillText(timeLabel(musicTimeMs, true), centerX, centerY + 17);
+      document.querySelector('#orbit-readout').textContent = `SYNC · ${timeLabel(musicTimeMs, true)}`;
+    }
+
+    function setTimelineZoom(value) {
+      timelineZoom = Math.min(5, Math.max(0.5, Number(value) || 1));
+      const zoomControl = document.querySelector('#zoom');
+      zoomControl.value = timelineZoom;
+      document.querySelector('#zoom-readout').value = `${Math.round(timelineZoom * 100)}%`;
+      scheduleDraw();
+      scheduleOrbitDraw();
+      requestAnimationFrame(() => {
+        const scroll = document.querySelector('#timeline-scroll');
+        scroll.scrollLeft = Math.max(0, timeToX(state.currentTime) - scroll.clientWidth * 0.35);
+      });
+    }
+
+    document.querySelector('#zoom').addEventListener('input', (event) => setTimelineZoom(event.target.value));
+    document.querySelector('#zoom-out').addEventListener('click', () => setTimelineZoom(timelineZoom - 0.25));
+    document.querySelector('#zoom-in').addEventListener('click', () => setTimelineZoom(timelineZoom + 0.25));
+
+    function pointerPoint(event) {
+      const bounds = canvas.getBoundingClientRect();
+      const x = event.clientX - bounds.left;
+      const y = event.clientY - bounds.top;
+      return {
+        x,
+        y,
+        time: Math.max(0, (x - TIME_GUTTER) / pixelsPerSecond() * 1000),
+        lane: clampLane(31 - Math.round((y - LANE_TOP) / LANE_GAP)),
+        inLaneArea: y >= 35 && y < ROTATE_TOP,
+        inRotateArea: y >= ROTATE_TOP && y <= TIMELINE_HEIGHT,
+      };
+    }
+
+    function pointToSegmentDistance(point, start, end) {
+      const dx = end.x - start.x; const dy = end.y - start.y;
+      const lengthSquared = dx * dx + dy * dy;
+      const ratio = lengthSquared ? Math.min(1, Math.max(0, ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared)) : 0;
+      return Math.hypot(point.x - (start.x + ratio * dx), point.y - (start.y + ratio * dy));
+    }
+
+    function findTimelineEvent(point) {
+      let closest = null;
+      let closestDistance = 11;
+      for (const item of chart.events) {
+        if (item.type === 'note') {
+          const distance = Math.hypot(point.x - timeToX(item.time), point.y - laneToY(item.lane));
+          if (distance < closestDistance) { closest = { item, mode: 'move' }; closestDistance = distance; }
+        } else if (item.type === 'drag') {
+          const start = { x: timeToX(item.startTime), y: laneToY(item.startLane) };
+          const end = { x: timeToX(item.endTime), y: laneToY(item.endLane) };
+          const startDistance = Math.hypot(point.x - start.x, point.y - start.y);
+          const endDistance = Math.hypot(point.x - end.x, point.y - end.y);
+          const lineDistance = pointToSegmentDistance(point, start, end);
+          const candidate = startDistance < closestDistance ? { item, mode: 'resize-start', distance: startDistance }
+            : endDistance < closestDistance ? { item, mode: 'resize-end', distance: endDistance }
+              : lineDistance < closestDistance ? { item, mode: 'move', distance: lineDistance } : null;
+          if (candidate) { closest = { item: candidate.item, mode: candidate.mode }; closestDistance = candidate.distance; }
+        } else {
+          const distance = Math.hypot(point.x - timeToX(item.time), point.y - (ROTATE_TOP + 31));
+          if (distance < closestDistance) { closest = { item, mode: 'move' }; closestDistance = distance; }
+        }
+      }
+      return closest;
+    }
+
+    function updatePlayhead(time) {
+      state.currentTime = Math.max(0, time);
+      if (Number.isFinite(audio.duration)) audio.currentTime = state.currentTime / 1000;
+      previewLastMs = state.currentTime;
+      syncTransport();
+    }
+
+    function orbitPointerAngle(event) {
+      const bounds = orbitCanvas.getBoundingClientRect();
+      const deltaX = event.clientX - (bounds.left + bounds.width / 2);
+      const deltaY = event.clientY - (bounds.top + bounds.height / 2);
+      return { angle: Math.atan2(deltaY, deltaX), distance: Math.hypot(deltaX, deltaY) };
+    }
+
+    orbitCanvas.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0 || !state.duration) return;
+      const point = orbitPointerAngle(event);
+      if (point.distance < 32) return;
+      orbitScrub = { pointerId: event.pointerId, angle: point.angle };
+      orbitCanvas.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    });
+
+    orbitCanvas.addEventListener('pointermove', (event) => {
+      if (!orbitScrub || orbitScrub.pointerId !== event.pointerId) return;
+      const point = orbitPointerAngle(event);
+      let angleDelta = point.angle - orbitScrub.angle;
+      if (angleDelta > Math.PI) angleDelta -= Math.PI * 2;
+      else if (angleDelta < -Math.PI) angleDelta += Math.PI * 2;
+      orbitScrub.angle = point.angle;
+      const timeDelta = angleDelta * state.duration / (Math.PI * 2);
+      updatePlayhead(Math.min(state.duration, Math.max(0, state.currentTime + timeDelta)));
+    });
+
+    function endOrbitScrub(event) {
+      if (orbitScrub?.pointerId === event.pointerId) orbitScrub = null;
+    }
+
+    orbitCanvas.addEventListener('pointerup', endOrbitScrub);
+    orbitCanvas.addEventListener('pointercancel', endOrbitScrub);
+
+    function openEventEditor(item) {
+      state.selectedId = item.id;
+      state.editingId = item.id;
+      state.selectedType = item.type;
+      document.querySelectorAll('.type-button').forEach((button) => button.classList.toggle('active', button.dataset.type === item.type));
+      renderForm(item.type, item);
+      renderAll();
+    }
+
+    function pointerDown(event) {
+      if (event.button !== 0) return;
+      const point = pointerPoint(event);
+      const hit = findTimelineEvent(point);
+      if (hit) {
+        state.selectedId = hit.item.id;
+        pointerEdit = { id: hit.item.id, mode: hit.mode, start: point, original: { ...hit.item }, moved: false };
+        canvas.setPointerCapture(event.pointerId);
+        scheduleDraw();
+        event.preventDefault();
+        return;
+      }
+
+      if (state.selectedType === 'note' && point.inLaneArea) {
+        const item = { id: crypto.randomUUID(), type: 'note', time: snappedTime(point.time), lane: point.lane };
+        chart.events.push(item); state.selectedId = item.id; updatePlayhead(item.time); openEventEditor(item); markChanged();
+      } else if (state.selectedType === 'drag' && point.inLaneArea) {
+        const startTime = snappedTime(point.time);
+        const item = { id: crypto.randomUUID(), type: 'drag', startTime, endTime: startTime + timeStep(), startLane: point.lane, endLane: point.lane, direction: 1 };
+        chart.events.push(item); state.selectedId = item.id;
+        pointerEdit = { id: item.id, mode: 'create-drag', start: point, original: { ...item }, moved: false };
+        canvas.setPointerCapture(event.pointerId); updatePlayhead(startTime); scheduleDraw(); event.preventDefault();
+      } else if (state.selectedType === 'rotate' && point.inRotateArea) {
+        const item = { id: crypto.randomUUID(), type: 'rotate', time: snappedTime(point.time), direction: 1 };
+        chart.events.push(item); state.selectedId = item.id; updatePlayhead(item.time); openEventEditor(item); markChanged();
+      } else updatePlayhead(point.time);
+    }
+
+    function pointerMove(event) {
+      if (!pointerEdit) return;
+      const point = pointerPoint(event);
+      const edit = pointerEdit;
+      const deltaX = point.x - edit.start.x;
+      const deltaY = point.y - edit.start.y;
+      if (Math.abs(deltaX) + Math.abs(deltaY) > 2) edit.moved = true;
+      const item = chart.events.find((candidate) => candidate.id === edit.id);
+      if (!item) return;
+      const laneDelta = clampLane(31 - Math.round((point.y - LANE_TOP) / LANE_GAP)) - clampLane(31 - Math.round((edit.start.y - LANE_TOP) / LANE_GAP));
+      const timeDelta = point.time - edit.start.time;
+      if (edit.mode === 'create-drag') {
+        const startTime = snappedTime(edit.start.time);
+        const endTime = snappedTime(point.time);
+        const startLane = edit.start.lane;
+        const endLane = point.lane;
+        if (endTime >= startTime) Object.assign(item, { startTime, endTime: Math.max(startTime + timeStep(), endTime), startLane, endLane, direction: endLane >= startLane ? 1 : -1 });
+        else Object.assign(item, { startTime: endTime, endTime: Math.max(endTime + timeStep(), startTime), startLane: endLane, endLane: startLane, direction: startLane >= endLane ? 1 : -1 });
+      } else if (edit.mode === 'resize-start') {
+        item.startTime = Math.min(snappedTime(point.time), item.endTime - timeStep());
+        item.startLane = point.lane;
+      } else if (edit.mode === 'resize-end') {
+        item.endTime = Math.max(snappedTime(point.time), item.startTime + timeStep());
+        item.endLane = point.lane;
+      } else if (item.type === 'note') {
+        item.time = snappedTime(edit.original.time + timeDelta);
+        item.lane = clampLane(edit.original.lane + laneDelta);
+      } else if (item.type === 'drag') {
+        item.startTime = Math.max(0, snappedTime(edit.original.startTime + timeDelta));
+        item.endTime = Math.max(item.startTime + timeStep(), snappedTime(edit.original.endTime + timeDelta));
+        item.startLane = clampLane(edit.original.startLane + laneDelta);
+        item.endLane = clampLane(edit.original.endLane + laneDelta);
+      } else item.time = Math.max(0, snappedTime(edit.original.time + timeDelta));
+      scheduleDraw();
+      scheduleOrbitDraw();
+    }
+
+    function pointerUp(event) {
+      if (!pointerEdit) return;
+      const edit = pointerEdit;
+      pointerEdit = null;
+      const item = chart.events.find((candidate) => candidate.id === edit.id);
+      if (!item) return;
+      if (edit.moved || edit.mode === 'create-drag') {
+        markChanged();
+        if (item.type === 'drag' && item.endTime <= item.startTime) item.endTime = item.startTime + timeStep();
+      }
+      updatePlayhead(eventTime(item));
+      openEventEditor(item);
+    }
+
+    canvas.addEventListener('pointerdown', pointerDown);
+    canvas.addEventListener('pointermove', pointerMove);
+    canvas.addEventListener('pointerup', pointerUp);
+    canvas.addEventListener('pointercancel', pointerUp);
+    new ResizeObserver(scheduleDraw).observe(document.querySelector('#timeline-scroll'));
+    window.addEventListener('resize', scheduleDraw);
+    new ResizeObserver(scheduleOrbitDraw).observe(document.querySelector('.orbit-stage'));
+    window.addEventListener('resize', scheduleOrbitDraw);
+
+    renderForm('note');
+    renderAll();
+    loadPreviewHitSound().catch((error) => console.warn('Preview hit sound could not be loaded:', error));
+  </script>
+</body>
+</html>

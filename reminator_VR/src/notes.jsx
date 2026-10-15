@@ -29,14 +29,15 @@ import { useFrame } from '@react-three/fiber';
 
 export const LogicOfNotes = ({ onlyNotes }) => {
   
-  const meshRef = useRef([]);  // 改變3D物件的參考
-  const notesRef = useRef([]);   // 儲存音符的狀態
-  const activeNoteIndicesRef = useRef([]);  // 儲存目前正在動畫中的音符索引
-  const nextNoteIndexRef = useRef(0);    // 儲存下一個要進入動畫的音符索引
-  const orderedNotes = useMemo(
-    () => [...onlyNotes].sort((left, right) => left.triggerTime - right.triggerTime),
-    [onlyNotes],
-  );
+  const meshRef = useRef([]);                // 改變3D物件的參考
+  const notesRef = useRef([]);               // 儲存音符的狀態
+  const activeNoteIndicesRef = useRef([]);   // 儲存目前正在動畫中的音符索引
+  const nextNoteIndexRef = useRef(0);        // 儲存下一個要進入動畫的音符索引
+
+  // 依照 triggerTime 對音符進行排序，確保音符按照正確的順序進入動畫
+  const orderedNotes = useMemo(() => 
+    [...onlyNotes].sort((left, right) => left.triggerTime - right.triggerTime),
+    [onlyNotes],);
 
   const setPerfect = usePerfectStore.getState().setPerfect;
   const setGood = useGoodStore.getState().setGood;
@@ -46,24 +47,25 @@ export const LogicOfNotes = ({ onlyNotes }) => {
   const setJudgeStatus = useJudgeStatus.getState().setJudgeStatus;
   
 
-
-  // 只有歌曲／譜面改變時，才建立遊戲中的可變資料
+  // 歌曲改變時，重製遊戲資料
   useEffect(() => {
-    notesRef.current = orderedNotes.map((note) => ({
+    notesRef.current = onlyNotes.map((note) => ({
       ...note,
     }));
 
     meshRef.current.length = orderedNotes.length;  
     activeNoteIndicesRef.current = [];   
     nextNoteIndexRef.current = 0;
+
   }, [orderedNotes]);
+
+
 
   useFrame(() => {
     if (!meshRef.current.length) return;
 
-    const musicTimeMs = useMusicTimeStore.getState().musicTimeMs;
-    const angleVR = useVRStore.getState().angleR;
-    const angle = angleVR ;
+    const musicTimeMs = useMusicTimeStore.getState().musicTimeMs;   // 時間
+    const angleVR = useVRStore.getState().angleR;                   // 角度
 
     const notes = notesRef.current;
     const activeNoteIndices = activeNoteIndicesRef.current;
@@ -102,7 +104,7 @@ export const LogicOfNotes = ({ onlyNotes }) => {
       // 音符進入判定區前只更新動畫；進入後才執行一次角度判定。
       if (currentRadius <= noteState.endPosition) {
         const noteAngle = noteState.noteLand * everyLandAngle;
-        const angleDiff = ((angle - noteAngle + Math.PI) % (Math.PI * 2)) - Math.PI;
+        const angleDiff = ((angleVR - noteAngle + Math.PI) % (Math.PI * 2)) - Math.PI;
         const angleDiffDegree = Math.abs(angleDiff) * (180 / Math.PI);
 
         const judgeStyle = angleDiffDegree <= perfectRange ? 1 :
@@ -206,7 +208,7 @@ export const LogicOfDarg = ({ onlyDrag }) => {
 
       if (drag.direction === 1 && landDifference < 0) {
         landDifference += 32;
-      } else if (drag.direction === -1 && landDifference > 0) {
+      } else if (drag.direction === 0 && landDifference > 0) {
         landDifference -= 32;
       }
 
@@ -310,7 +312,7 @@ export const LogicOfDarg = ({ onlyDrag }) => {
 
         if (drag.direction === 1 && landDifference < 0) {
           landDifference += 32;
-        } else if (drag.direction === -1 && landDifference > 0) {
+        } else if (drag.direction === 0 && landDifference > 0) {
           landDifference -= 32;
         }
 

@@ -9,7 +9,8 @@ import {Howl,Howler} from 'howler';
 import * as THREE from 'three';
 
 import { 
-   useFadeOut 
+   useFadeOut,
+   usePopAnimation
 }from './hooks.jsx'; 
 
 import {
@@ -182,26 +183,6 @@ export const ShowGameSongTextStand = ({ shouldRotate, whichGet, offset , r, step
     </group>
   );
 };
-
-// 彈出動畫效果
-function PopAnimation(trigger , enterX, enterY, enterz , targetXY , lambda ){
-  const value = useRef(null);
-
-  useEffect(() => {
-    if (!value.current) return;
-    value.current.scale.set(enterX, enterY, enterz);
-    value.current.position.z = -5;
-  }, [trigger]);
-
-  useFrame((state, delta) => {
-    if (!value.current) return;
-    value.current.scale.x = THREE.MathUtils.damp(value.current.scale.x, targetXY, lambda, delta);
-    value.current.scale.y = THREE.MathUtils.damp(value.current.scale.y, targetXY, lambda, delta);
-    value.current.position.z = THREE.MathUtils.damp(value.current.position.z, 0, lambda, delta);
-  });
-
-  return value;
-}
 
 // 星空
 export const RotatingStars = () => {
@@ -384,7 +365,7 @@ const SongCard3D = ({ song, angle, isInRange, setTouch, setChose, setStatus,setS
 // 選歌機制 + SongCard3D 渲染
 export const MenuComponent = ({ getsongs, setTouch, setChose, getTouch, setStatus, getStatus, getPage, setStop, setNoteCSVData }) => {
 
-  const scale = PopAnimation(getStatus , 0.8, 0.8, 1, 1, 30);
+  const scale = usePopAnimation(getStatus , 0.8, 0.8, 1, 1, 30);
 
   const pageLimit = 8;                              // 每頁有8個選項
   const pageStartIndex = getPage * pageLimit;       // 這頁的第一個歌曲index(8 => 16 -> 32...)
@@ -631,7 +612,7 @@ export const ShowChoseSong = ({ getChose, setStatus }) => {
   const [getTime, setTime] = useState(5); 
   const albumTexture = useTexture(getChose?.img ? `${getChose.img}?url=${encodeURIComponent(getChose.img)}` : undefined);
 
-  const scale = PopAnimation(getChose , 0.8, 0.8, 1, 1, 30);
+  const scale = usePopAnimation(getChose , 0.8, 0.8, 1, 1, 30);
 
   useEffect(() => {
     ResetSongJudgeData();
@@ -1434,7 +1415,7 @@ export const BackImg = ({ getChose ,}) => {
 export const ShowChoseSongScoresImg = ({ getChose , setStatus}) => {
   const texture = useTexture(getChose?.img ? `${getChose.img}?url=${encodeURIComponent(getChose.img)}` : undefined);
 
-  const scale = PopAnimation(getChose , 0.8, 0.8, 1, 1, 30);
+  const scale = usePopAnimation(getChose , 0.8, 0.8, 1, 1, 30);
 
   const[isTouch , setIsTouch] = useState(false);
   const angleImg = useRef(0);
@@ -1552,7 +1533,7 @@ const ShowGameSongOverButtom = ({ isTouch , texts , offset }) => {
 }
 
 export const ShoeGameSongBox = ( getStatus ) => {
-  const scale = PopAnimation(getStatus , 0.8, 0.8, 1, 1, 30);
+  const scale = usePopAnimation(getStatus , 0.8, 0.8, 1, 1, 30);
   return (
     <group ref={scale}>
       <mesh position={[0, 0, 0]}>

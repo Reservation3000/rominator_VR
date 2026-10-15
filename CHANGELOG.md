@@ -12,3 +12,16 @@
 ### Removed
 - Remove mouse control for game angle
 - Sidebar: Remove VR rotation control
+
+
+---
+
+# Beta 0.1.21 (2026-10-15)
+
+### Changed
+- drag direction of rotation [1/-1] turn to [1/0]
+
+### Added
+
+
+### Removed

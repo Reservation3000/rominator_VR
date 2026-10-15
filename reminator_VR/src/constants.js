@@ -31,3 +31,4 @@ export const everyLandAngle = Math.PI / 16;     // 單一軌道的角度寬度
 export const arcLong = everyLandAngle + 0.4;    // 音符的長度
 export const halfArcLong = arcLong / 2;         // 音符一半的長度
 
+

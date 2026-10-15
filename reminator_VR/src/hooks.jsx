@@ -1,5 +1,6 @@
 import { useRef, useEffect ,  useState } from 'react';
 import { useFrame} from '@react-three/fiber';
+import * as THREE from 'three';
 import {
   useRotateJudgeResult,
   useVRStore,
@@ -34,6 +35,29 @@ export function useFadeOut(trigger , starValue , triggerValue) {
 
   return transparency;
 }
+
+// 彈出動畫效果
+export function usePopAnimation(trigger , enterX, enterY, enterz , targetXY , lambda ){
+  const value = useRef(null);
+
+  useEffect(() => {
+    if (!value.current) return;
+    value.current.scale.set(enterX, enterY, enterz);
+    value.current.position.z = -5;
+  }, [trigger]);
+
+  useFrame((state, delta) => {
+    if (!value.current) return;
+    value.current.scale.x = THREE.MathUtils.damp(value.current.scale.x, targetXY, lambda, delta);
+    value.current.scale.y = THREE.MathUtils.damp(value.current.scale.y, targetXY, lambda, delta);
+    value.current.position.z = THREE.MathUtils.damp(value.current.position.z, 0, lambda, delta);
+  });
+
+  return value;
+}
+
+
+
 
 // 自訂 Rotate 旋轉判定的 function ==================================================
 export function useRotateJudge() {
