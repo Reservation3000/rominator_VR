@@ -25,3 +25,15 @@
 
 
 ### Removed
+
+
+
+# Beta 0.1.30 (2026-10-19)
+
+### Changed
+
+
+### Added
+- Add song 【LostHorizen】
+
+### Removed

@@ -468,8 +468,8 @@ export const LogicOfRotate = ({ onlyRotate }) => {
       {(onlyRotate ?? []).map((note, index) => {
         const noteColor =
           note.direction === 1
-            ? "rgb(0, 100, 255)" // 順時針
-            : "rgb(255, 0, 0)";  // 逆時針
+            ? "rgb(0, 100, 255)" // 逆時針
+            : "rgb(255, 0, 0)";  // 順時針
 
         return (
           <mesh

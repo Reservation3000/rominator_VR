@@ -117,5 +117,17 @@
         "mp3": "https://mg.reservationfurry.art/発見者はワタシ/base.mp3",
         "csv": "https://mg.reservationfurry.art/発見者はワタシ/base.csv",
         "img": "https://mg.reservationfurry.art/発見者はワタシ/base.jpg"
+    },
+
+    {
+        "id": 11,
+        "name": "LostHorizen",
+        "song_artist": "吉米",
+        "sheet_artist": "Reservation",
+        "level": 11,
+        "bpm": 125,
+        "mp3": "https://mg.reservationfurry.art/LostHorizen/base.mp3",
+        "csv": "https://mg.reservationfurry.art/LostHorizen/base.csv",
+        "img": "https://mg.reservationfurry.art/LostHorizen/base.jpg"
     }
 ]
